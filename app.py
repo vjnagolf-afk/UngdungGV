@@ -1,5 +1,6 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
+from google.genai import types
 import io
 from docx import Document
 from docx.shared import Pt, Inches
@@ -16,8 +17,8 @@ st.title("📚 EduAssist AI: Trợ Lý Số Hỗ Trợ Giáo Viên")
 st.caption("Sản phẩm tham gia Cuộc thi AI for Life năm 2026 - Phường Tân Lập")
 st.markdown("---")
 
-# HÀM CHUYỂN ĐỔI VĂN BẢN THÀNH FILE WORD (.DOCX) CHUYÊN NGHIỆP
-def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_vi="THCS Nguyễn Chí Thanh"):
+# HÀM CHUYỂN ĐỔI VĂN BẢN THÀNH FILE WORD (.DOCX) CHUYÊN NGHIỆP (ĐÃ THÊM TÁC GIẢ & ĐƠN VỊ)
+def export_to_docx(text_content, title_name, tac_gia="", don_vi=""):
     doc = Document()
     
     # Định dạng lề trang chuẩn hành chính (Top, Bottom, Left, Right = 2cm)
@@ -86,26 +87,16 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     doc.save(bio)
     return bio.getvalue()
 
-# 2. CẤU HÌNH KẾT NỐI API VỚI MẬT KHẨU NGẮN GỌN
-MAT_KHAU_KICH_HOAT = "KHTN2026"  
-API_KEY_CUA_BAN = "AQ.Ab8RN6Kl5BU49xIqRYVbgD-elWKreXPLWpJyQ0PCZqeu59iLQQ" 
-
-# Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
-mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
+# 2. CẤU HÌNH KẾT NỐI API GEMINI
+api_key = st.sidebar.text_input("Nhập Gemini API Key của bạn:", type="password")
+st.sidebar.warning("⚠️ Bạn cần nhập API Key ở trên để kích hoạt các tính năng của trợ lý AI.")
 
 client = None
-if mat_khau_nhap:
-    if mat_khau_nhap == MAT_KHAU_KICH_HOAT:
-        try:
-            genai.configure(api_key=API_KEY_CUA_BAN)
-            client = "CONNECTED" # Biến đánh dấu kết nối thành công
-            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
-        except Exception as e:
-            st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
-    else:
-        st.sidebar.error("❌ Mật khẩu kích hoạt không chính xác!")
-else:
-    st.sidebar.warning("⚠️ Vui lòng nhập mật khẩu ở trên để sử dụng các tính năng AI.")
+if api_key:
+    try:
+        client = genai.Client(api_key=api_key)
+    except Exception as e:
+        st.sidebar.error(f"Lỗi cấu hình API: {e}")
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -114,7 +105,7 @@ chức_năng = st.sidebar.radio(
     ("1. Thiết kế giáo án thông minh", "2. Tạo ngân hàng câu hỏi")
 )
 
-# THÔNG TIN TÁC GIẢ CỐ ĐỊNH Ở THANH BÊN
+# THÔNG TIN TÁC GIẢ CỐ ĐỊNH Ở THANH BÊN (Hiển thị chung cho toàn bộ app)
 st.sidebar.markdown("---")
 st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", placeholder="Ví dụ: Nguyễn Văn A")
@@ -137,7 +128,7 @@ if chức_năng == "1. Thiết kế giáo án thông minh":
 
     if st.button("🚀 Bắt đầu tạo giáo án"):
         if not client:
-            st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
+            st.error("Vui lòng nhập API Key ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
         else:
@@ -157,8 +148,10 @@ if chức_năng == "1. Thiết kế giáo án thông minh":
                 Trình bày rõ ràng bằng tiếng Việt, phân tách các mục bằng tiêu đề rõ ràng.
                 """
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt_giao_an)
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt_giao_an,
+                    )
                     st.success("✨ Đã tạo xong giáo án thành công!")
                     st.markdown(response.text)
                     
@@ -184,7 +177,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
         if not client:
-            st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
+            st.error("Vui lòng nhập API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung tài liệu nguồn.")
         else:
@@ -199,8 +192,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 \"\"\"{tai_lieu}\"\"\"
                 """
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt_cau_hoi)
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt_cau_hoi,
+                    )
                     st.success("✨ Đã tạo xong bộ câu hỏi trắc nghiệm!")
                     st.markdown(response.text)
                     
