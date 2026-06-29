@@ -91,8 +91,8 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
 # Thay vì bắt người dùng nhập mã API dài, họ chỉ cần gõ mật khẩu ngắn này
 MAT_KHAU_KICH_HOAT = "KHTN2026"  # Bạn có thể tự đổi thành chữ khác tùy ý
 
-# Bạn dán thẳng mã khóa API thật (chuỗi AIzaSy...) của bạn vào đây
-API_KEY_CUA_BAN = "AIzaSy..." 
+# Bạn dán thẳng mã khóa API thật (AQ.Ab8RN6Kl5BU49xIqRYVbgD-elWKreXPLWpJyQ0PCZqeu59iLQQ) của bạn vào đây
+API_KEY_CUA_BAN = "AQ.Ab8RN6Kl5BU49xIqRYVbgD-elWKreXPLWpJyQ0PCZqeu59iLQQ" 
 
 # Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
 mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
