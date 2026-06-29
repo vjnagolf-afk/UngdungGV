@@ -87,17 +87,29 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     doc.save(bio)
     return bio.getvalue()
 
-# 2. CẤU HÌNH KẾT NỐI API GEMINI
-api_key = st.sidebar.text_input("Nhập Gemini API Key của bạn:", type="password")
-st.sidebar.warning("⚠️ Bạn cần nhập API Key ở trên để kích hoạt các tính năng của trợ lý AI.")
+# 2. CẤU HÌNH KẾT NỐI API VỚI MẬT KHẨU NGẮN GỌN
+# Thay vì bắt người dùng nhập mã API dài, họ chỉ cần gõ mật khẩu ngắn này
+MAT_KHAU_KICH_HOAT = "KHTN2026"  # Bạn có thể tự đổi thành chữ khác tùy ý
+
+# Bạn dán thẳng mã khóa API thật (chuỗi AIzaSy...) của bạn vào đây
+API_KEY_CUA_BAN = "AIzaSy..." 
+
+# Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
+mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
 
 client = None
-if api_key:
-    try:
-        client = genai.Client(api_key=api_key)
-    except Exception as e:
-        st.sidebar.error(f"Lỗi cấu hình API: {e}")
-
+if mat_khau_nhap:
+    if mat_khau_nhap == MAT_KHAU_KICH_HOAT:
+        try:
+            # Nếu gõ đúng mật khẩu ngắn, hệ thống tự gọi API Key thật ra chạy
+            client = genai.Client(api_key=API_KEY_CUA_BAN)
+            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
+        except Exception as e:
+            st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
+    else:
+        st.sidebar.error("❌ Mật khẩu kích hoạt không chính xác!")
+else:
+    st.sidebar.warning("⚠️ Vui lòng nhập mật khẩu ở trên để sử dụng các tính năng AI.")
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
 chức_năng = st.sidebar.radio(
