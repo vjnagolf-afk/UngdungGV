@@ -1,4 +1,5 @@
 import streamlit as st
+import google.generativeai as genai
 import io
 from docx import Document
 from docx.shared import Pt, Inches
@@ -99,11 +100,11 @@ client = None
 if mat_khau_nhap:
     if mat_khau_nhap == MAT_KHAU_KICH_HOAT:
         try:
-            # Nếu gõ đúng mật khẩu ngắn, hệ thống tự gọi API Key thật ra chạy
-            client = genai.Client(api_key=API_KEY_CUA_BAN)
-            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
-        except Exception as e:
-            st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
+            genai.configure(api_key=API_KEY_CUA_BAN)
+    client = "CONNECTED" # Biến đánh dấu kết nối thành công
+    st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
+except Exception as e:
+    st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
     else:
         st.sidebar.error("❌ Mật khẩu kích hoạt không chính xác!")
 else:
@@ -158,10 +159,8 @@ if chức_năng == "1. Thiết kế giáo án thông minh":
                 Trình bày rõ ràng bằng tiếng Việt, phân tách các mục bằng tiêu đề rõ ràng.
                 """
                 try:
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt_giao_an,
-                    )
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+response = model.generate_content(prompt_giao_an)
                     st.success("✨ Đã tạo xong giáo án thành công!")
                     st.markdown(response.text)
                     
@@ -202,10 +201,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 \"\"\"{tai_lieu}\"\"\"
                 """
                 try:
-                    response = client.models.generate_content(
-                        model='gemini-2.5-flash',
-                        contents=prompt_cau_hoi,
-                    )
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+response = model.generate_content(prompt_cau_hoi)
                     st.success("✨ Đã tạo xong bộ câu hỏi trắc nghiệm!")
                     st.markdown(response.text)
                     
