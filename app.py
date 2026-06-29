@@ -1,6 +1,4 @@
 import streamlit as st
-from google import genai
-from google.genai import types
 import io
 from docx import Document
 from docx.shared import Pt, Inches
