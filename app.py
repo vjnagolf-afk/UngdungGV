@@ -100,7 +100,7 @@ def read_uploaded_docx(uploaded_file):
 
 # 2. CẤU HÌNH PHÂN TÁCH LOGIC: MẬT KHẨU VÀ API KEY KHÁC NHAU
 MAT_KHAU_KICH_HOAT = "KHTN2026"  
-API_KEY_AN_DANH = "AQ.Ab8RN6J-wsyOxw7frls8Hj88O_0vTOUHSofDko8h7KgDRlwQlg" 
+API_KEY_AN_DANH = "AQ.Ab8RN6IKUFl5NR1aS62Whm3cU8Y-db9adoXdxnXK9vXKOBlURQ" 
 
 # Giao diện nhập mật khẩu ngắn gọn ở thanh bên trái
 mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
@@ -181,7 +181,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 Trình bày rõ ràng bằng tiếng Việt.
                 """
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt_giao_an)
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
                     st.markdown(response.text)
@@ -246,7 +246,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt_toan_van)
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(response.text)
