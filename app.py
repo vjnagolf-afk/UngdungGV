@@ -5,7 +5,6 @@ from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import google.generativeai as genai
 from pypdf import PdfReader
-from fpdf import FPDF # THƯ VIỆN MỚI ĐỂ XUẤT FILE PDF
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
 st.set_page_config(
@@ -79,27 +78,6 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     doc.save(bio)
     return bio.getvalue()
 
-# HÀM MỚI: TẠO FILE PDF HƯỚNG DẪN ĐỂ TẢI VỀ (HỖ TRỢ UNICODE)
-def export_to_pdf(text_content, title_name):
-    pdf = FPDF()
-    pdf.add_page()
-    # Sử dụng font hệ thống có sẵn hỗ trợ gõ tiếng Việt không bị lỗi định dạng
-    pdf.set_font("Helvetica", size=12)
-    
-    # Tiêu đề tài liệu
-    pdf.cell(200, 10, txt=title_name.upper(), ln=True, align='C')
-    pdf.ln(10)
-    
-    # Ghi nội dung (loại bỏ các ký tự dấu Markdown để PDF sạch đẹp)
-    lines = text_content.replace("**", "").split('\n')
-    for line in lines:
-        if line.strip():
-            # Chuyển đổi mã hóa để tránh lỗi hiển thị font trên một số trình duyệt
-            safe_text = line.encode('utf-8', 'ignore').decode('utf-8')
-            pdf.multi_cell(0, 8, txt=safe_text, align='J')
-            
-    return pdf.output()
-
 # HÀM ĐỌC FILE WORD (.DOCX) TẢI LÊN
 def read_uploaded_docx(uploaded_file):
     try:
@@ -150,23 +128,21 @@ st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
 
-# CẬP NHẬT: KHO TÀI LIỆU GỢI Ý MẪU (HỖ TRỢ NÚT TẢI CẢ FILE WORD VÀ FILE PDF)
+# KHO TÀI LIỆU GỢI Ý MẪU (ĐÃ FIX: Không dùng thư viện fpdf giúp chạy mượt 100%)
 st.sidebar.markdown("---")
 st.sidebar.subheader("📁 Kho tài liệu hướng dẫn xây dựng KHBD")
-st.sidebar.info("Thầy cô có thể tải các tài liệu hướng dẫn hoặc cấu trúc khung kế hoạch bài dạy mẫu dưới đây:")
+st.sidebar.info("Thầy cô có thể tải tài liệu hướng dẫn cấu trúc khung kế hoạch bài dạy mẫu 5512 dưới đây:")
 
-huong_dan_text = """HUONG DAN XAY DUNG KE HOACH BAI DAY (KHBD) CHUAN CONG VAN 5512
-1. Khung ke hoach bai day phai dam bao day du cac muc: Muc tieu, Thiet bi day hoc va hoc lieu, Tien trinh day hoc.
-2. Trong muc "To chuc thuc hien" cua moi Hoat dong hoc, bat buoc phai trinh bay cu the theo 4 buoc bai ban:
-   - Buoc 1: Chuyen giao nhiem vu hoc tap.
-   - Buoc 2: Thuc hien nhiem vu hoc tap (Giao vien theo doi, huong dan, tro giup).
-   - Buoc 3: Bao cao ket qua va thao luan.
-   - Buoc 4: Ket luan, nhan dinh (Giao vien kiem tra, danh gia qua san pham hoc tap).
+huong_dan_text = """HƯỚNG DẪN XÂY DỰNG KẾ HOẠCH BÀI DẠY (KHBD) CHUẨN CÔNG VĂN 5512
+1. Khung kế hoạch bài dạy phải đảm bảo đầy đủ các mục: Mục tiêu, Thiết bị dạy học và học liệu, Tiến trình dạy học.
+2. Trong mục "Tổ chức thực hiện" của mỗi Hoạt động học, bắt buộc phải trình bày cụ thể theo 4 bước bài bản:
+   - Bước 1: Chuyển giao nhiệm vụ học tập.
+   - Bước 2: Thực hiện nhiệm vụ học tập (Giáo viên theo dõi, hướng dẫn, trợ giúp).
+   - Bước 3: Báo cáo kết quả và thảo luận.
+   - Bước 4: Kết luận, nhận định (Giáo viên kiểm tra, đánh giá qua sản phẩm học tập).
 """
 
-# Tạo sẵn dữ liệu để xuất file
-doc_mau_data = export_to_docx(huong_dan_text, "Huong dan xay dung KHBD chuan 5512", tac_gia, don_vi)
-pdf_mau_data = export_to_pdf(huong_dan_text, "Huong dan xay dung KHBD chuan 5512")
+doc_mau_data = export_to_docx(huong_dan_text, "Hướng dẫn xây dựng KHBD chuẩn 5512", tac_gia, don_vi)
 
 col_btn1, col_btn2 = st.sidebar.columns(2)
 with col_btn1:
@@ -177,11 +153,12 @@ with col_btn1:
         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
 with col_btn2:
+    # Giải pháp tối ưu: Xuất file cẩm nang dạng Text tài liệu gọn nhẹ mà không lo lỗi font chữ hệ thống
     st.download_button(
-        label="📥 Bản PDF (.pdf)",
-        data=pdf_mau_data,
-        file_name="Huong_dan_KHBD_5512.pdf",
-        mime="application/pdf"
+        label="📥 Bản Cẩm nang (.txt)",
+        data=huong_dan_text,
+        file_name="Huong_dan_KHBD_5512.txt",
+        mime="text/plain"
     )
 
 
