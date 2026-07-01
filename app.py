@@ -4,6 +4,7 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import google.generativeai as genai
+from pypdf import PdfReader # THƯ VIỆN MỚI ĐỂ ĐỌC FILE PDF
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
 st.set_page_config(
@@ -45,7 +46,7 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     title_run = title.add_run(title_name.upper())
     title_run.bold = True
     title_run.font.size = Pt(15)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER # CĂN GIỮA TIÊU ĐỀ CHÍNH
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER # Căn giữa tiêu đề chính
     title.paragraph_format.space_before = Pt(12)
     title.paragraph_format.space_after = Pt(12)
 
@@ -72,7 +73,6 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
             run = p.add_run(text)
             run.bold = True
             run.font.size = Pt(14)
-            # Giữ căn giữa nếu tiêu đề chứa từ khóa thông tin cố định
             if any(keyword in text.upper() for keyword in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC", "LỚP", "BÀI HỌC", "THỜI LƯỢNG"]):
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         # Xử lý các dòng có chữ in đậm dạng **văn bản**
@@ -90,7 +90,7 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     doc.save(bio)
     return bio.getvalue()
 
-# HÀM ĐỌC NỘI DUNG TỪ FILE WORD (.DOCX) ĐƯỢC TẢI LÊN ỨNG DỤNG
+# HÀM ĐỌC NỘI DUNG TỪ FILE WORD (.DOCX)
 def read_uploaded_docx(uploaded_file):
     try:
         doc = Document(uploaded_file)
@@ -100,6 +100,20 @@ def read_uploaded_docx(uploaded_file):
         return "\n".join(full_text)
     except Exception as e:
         st.error(f"Lỗi khi đọc file Word: {e}")
+        return ""
+
+# HÀM MỚI: ĐỌC NỘI DUNG TỪ FILE PDF (.PDF)
+def read_uploaded_pdf(uploaded_file):
+    try:
+        reader = PdfReader(uploaded_file)
+        full_text = []
+        for page in reader.pages:
+            text = page.extract_text()
+            if text:
+                full_text.append(text)
+        return "\n".join(full_text)
+    except Exception as e:
+        st.error(f"Lỗi khi đọc file PDF: {e}")
         return ""
 
 
@@ -126,12 +140,11 @@ st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
 
-# CHỨC NĂNG MỚI: TẢI TÀI LIỆU GỢI Ý / SÁCH GIÁO KHOA MẪU KHBD
+# KHO TÀI LIỆU GỢI Ý MẪU
 st.sidebar.markdown("---")
 st.sidebar.subheader("📁 Kho tài liệu hướng dẫn xây dựng KHBD")
 st.sidebar.info("Thầy cô có thể tải các tài liệu hướng dẫn hoặc cấu trúc khung kế hoạch bài dạy mẫu dưới đây:")
 
-# Tạo file tài liệu mẫu ảo (Thầy có thể dán nội dung hướng dẫn thực tế vào đây)
 huong_dan_text = """HƯỚNG DẪN XÂY DỰNG KẾ HOẠCH BÀI DẠY (KHBD) CHUẨN CÔNG VĂN 5512
 1. Khung kế hoạch bài dạy phải đảm bảo đầy đủ các mục: Mục tiêu (Kiến thức, Năng lực, Phẩm chất), Thiết bị dạy học và học liệu, Tiến trình dạy học.
 2. Trong mục "Tổ chức thực hiện" của mỗi Hoạt động học, bắt buộc phải trình bày cụ thể theo 4 bước bài bản:
@@ -172,7 +185,6 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
             st.warning("Vui lòng điền tên bài học.")
         else:
             with st.spinner("AI đang thiết lập tiến trình bài dạy, vui lòng đợi..."):
-                # RÀNG BUỘC MỚI: Siết chặt quy trình 4 bước cụ thể của phần "Tổ chức thực hiện" trong Prompt
                 prompt_giao_an = f"""
                 Bạn là một giáo viên THCS và là chuyên gia sư phạm Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
                 - Tên bài học: {ten_bai}
@@ -219,21 +231,27 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
 
 elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
-    st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) chứa tài liệu nguồn bên dưới.")
+    st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) hoặc file PDF (.pdf) chứa tài liệu nguồn bên dưới.")
     
-    uploaded_file = st.file_uploader("📥 Đính kèm file Word (.docx) chứa kiến thức nguồn (Tùy chọn):", type=["docx"])
+    # CẬP NHẬT: Cho phép nhận cả file .docx và .pdf
+    uploaded_file = st.file_uploader("📥 Đính kèm file kiến thức nguồn (Chấp nhận .docx hoặc .pdf):", type=["docx", "pdf"])
     
     file_content = ""
     if uploaded_file is not None:
-        file_content = read_uploaded_docx(uploaded_file)
+        # Tự động nhận diện định dạng đuôi file để gọi hàm đọc tương ứng
+        if uploaded_file.name.endswith('.docx'):
+            file_content = read_uploaded_docx(uploaded_file)
+        elif uploaded_file.name.endswith('.pdf'):
+            file_content = read_uploaded_pdf(uploaded_file)
+            
         if file_content:
-            st.success(f"📎 Đã đọc nội dung thành công từ file: {uploaded_file.name}")
+            st.success(f"📎 Đã trích xuất nội dung thành công từ file: {uploaded_file.name}")
             
     tai_lieu = st.text_area(
         "Nội dung/Văn bản kiến thức nguồn:", 
         value=file_content, 
         height=200, 
-        placeholder="Dán đoạn văn bản kiến thức hoặc nội dung file Word sẽ tự động xuất hiện ở đây sau khi tải lên..."
+        placeholder="Dán đoạn văn bản kiến thức hoặc nội dung file tải lên sẽ tự động xuất hiện ở đây..."
     )
     
     col_type, col_num = st.columns(2)
@@ -246,7 +264,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         if not api_key_input:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
-            st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
+            st.warning("Vui lòng nhập nội dung hoặc đính kèm file tài liệu nguồn.")
         else:
             with st.spinner("AI đang phân tích dữ liệu nguồn và thiết lập bộ câu hỏi..."):
                 if loai_cau_hoi == "Câu hỏi Trắc nghiệm":
