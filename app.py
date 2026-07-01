@@ -100,7 +100,7 @@ def read_uploaded_docx(uploaded_file):
 
 # 2. CẤU HÌNH KẾT NỐI API BẢO MẬT BẰNG MẬT KHẨU
 MAT_KHAU_KICH_HOAT = "KHTN2026"  
-API_KEY_CUA_BAN = "AQ.Ab8RN6J-wsyOxw7frls8Hj88O_0vTOUHSofDko8h7KgDRlwQlg" 
+API_KEY_CUA_BAN = "AQ.Ab8RN6KXzITy0Iq7geMRdjiYoQY9EwD7kA6e9LUaqxF1TAN5mQ" 
 
 # Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
 mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
