@@ -160,8 +160,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # Gọi mô hình với tên định dạng chuẩn
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # ĐÃ ĐỔI: Sử dụng dòng mô hình thế hệ mới tương thích tuyệt đối với thư viện mới
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
@@ -202,7 +202,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     with col_type:
         loai_cau_hoi = st.radio("Chọn định dạng câu hỏi cần tạo:", ("Câu hỏi Trắc nghiệm", "Câu hỏi Tự luận"))
     with col_num:
-        so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
+        so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, min_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
         if not api_key_input:
@@ -227,7 +227,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # ĐÃ ĐỔI: Sử dụng dòng mô hình thế hệ mới tương thích tuyệt đối với thư viện mới
+                    model = genai.GenerativeModel('gemini-2.5-flash')
                     response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
