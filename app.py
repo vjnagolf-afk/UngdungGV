@@ -1,7 +1,6 @@
 import streamlit as st
+import google.generativeai as genai
 import io
-import requests
-import json
 from docx import Document
 from docx.shared import Pt, Inches
 
@@ -99,44 +98,26 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM GỌI API GEMINI QUA PHƯƠNG THỨC REQUESTS TRỰC TIẾP
-def call_gemini_api_direct(api_key, prompt_text):
-    # Sử dụng endpoint v1beta truyền trực tiếp mã AQ... của thầy qua URL
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt_text}
-                ]
-            }
-        ]
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        # Kiểm tra mã phản hồi trả về từ máy chủ Google
-        if response.status_code == 200:
-            res_json = response.json()
-            return res_json['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"Lỗi kết nối từ máy chủ Google ({response.status_code}): {response.text}"
-    except Exception as e:
-        return f"Lỗi không thể kết nối mạng: {e}"
+# 2. CẤU HÌNH KẾT NỐI API BẢO MẬT BẰNG MẬT KHẨU
+MAT_KHAU_KICH_HOAT = "KHTN2026"  
+API_KEY_CUA_BAN = "AQ.Ab8RN6J-wsyOxw7frls8Hj88O_0vTOUHSofDko8h7KgDRlwQlg" 
 
+# Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
+mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
 
-# 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP BÊN SIDEBAR
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
-
-if api_key_input:
-    st.sidebar.success("🔑 Đã ghi nhận mã API Key thành công!")
+client = None
+if mat_khau_nhap:
+    if mat_khau_nhap == MAT_KHAU_KICH_HOAT:
+        try:
+            genai.configure(api_key=API_KEY_CUA_BAN)
+            client = "CONNECTED" # Đánh dấu trạng thái kết nối thành công
+            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
+        except Exception as e:
+            st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
+    else:
+        st.sidebar.error("❌ Mật khẩu kích hoạt không chính xác!")
 else:
-    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key vào ô trên.")
+    st.sidebar.warning("⚠️ Vui lòng nhập mật khẩu ở trên để sử dụng các tính năng AI.")
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -145,7 +126,7 @@ chức_năng = st.sidebar.radio(
     ("1. Thiết kế KHBD thông minh", "2. Tạo ngân hàng câu hỏi")
 )
 
-# THÔNG TIN TÁC GIẢ DỰ THI
+# THÔNG TIN TÁC GIẢ CỐ ĐỊNH Ở THANH BÊN
 st.sidebar.markdown("---")
 st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
@@ -154,51 +135,49 @@ don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS N
 # 4. XỬ LÝ LOGIC CHO TỪNG TÍNH NĂNG
 if chức_năng == "1. Thiết kế KHBD thông minh":
     st.header("📋 Công cụ thiết kế Kế hoạch bài dạy (KHBD) thông minh")
-    st.info("💡 Hệ thống tự động tích hợp năng lực số và giáo dục trí tuệ nhân tạo (AI) vào bài học.")
+    st.info("💡 Hệ thống đã được lập trình để **luôn luôn tích hợp sẵn năng lực số và giáo dục trí tuệ nhân tạo (AI)** vào tiến trình bài học của thầy.")
     
     col1, col2 = st.columns(2)
     with col1:
-        ten_bai = st.text_input("Tên bài học:", placeholder="Ví dụ: Sự nở vì nhiệt của chất rắn")
+        ten_bai = st.text_input("Tên bài học:", placeholder="Ví dụ: Lăng kính")
         lop = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"])
     with col2:
         mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
-        thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 3 tiết")
+        thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 2 tiết (90 phút)")
         
-    yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm...")
+    yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if not api_key_input:
-            st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
+        if not client:
+            st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
         else:
-            with st.spinner("AI đang soạn thảo KHBD tích hợp công nghệ, vui lòng đợi..."):
+            with st.spinner("AI đang nghiên cứu và soạn thảo KHBD tích hợp công nghệ, vui lòng đợi..."):
                 prompt_giao_an = f"""
-                Bạn là một giáo viên THCS và là chuyên gia sư phạm xuất sắc tại Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh:
+                Bạn là một giáo viên THCS và là chuyên gia sư phạm đi đầu trong đổi mới sáng tạo, chuyển đổi số giáo dục tại Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
                 - Tên bài học: {ten_bai}
                 - Môn học: {mon_hoc}
                 - Khối lớp: {lop}
                 - Thời lượng: {thoi_luong}
-                - Yêu cầu bổ sung: {yeu_cau_them}
+                - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
-                YÊU CẦU BẮT BUỘC: Tích hợp năng lực số và giáo dục AI phù hợp với học sinh THCS.
-                Cấu trúc:
-                I. Mục tiêu bài học (Kiến thức; Năng lực đặc thù KHTN; Năng lực chung, chú trọng NĂNG LỰC SỐ và ỨNG DỤNG AI; Phẩm chất)
-                II. Thiết bị dạy học và học liệu số
-                III. Tiến trình dạy học (4 hoạt động: Khởi động; Hình thành kiến thức; Luyện tập; Vận dụng). Mỗi hoạt động có Mục tiêu, Nội dung, Sản phẩm, Tổ chức thực hiện.
-                Trình bày chi tiết bằng tiếng Việt.
+                YÊU CẦU BẮT BUỘC: 
+                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh (Ví dụ: ứng dụng mô hình AI tối ưu hóa, công cụ hỗ trợ thông minh, hoặc thảo luận về vai trò của AI trong bài học).
+                
+                Cấu trúc giáo án tuân thủ quy định chuẩn giáo dục:
+                I. Mục tiêu bài học (Kiến thức; Năng lực đặc thù Khoa học tự nhiên; Năng lực chung, đặc biệt chú trọng NĂNG LỰC SỐ và ỨNG DỤNG AI; Phẩm chất)
+                II. Thiết bị dạy học và học liệu (Bổ sung học liệu số, phần mềm công nghệ)
+                III. Tiến trình dạy học (Gồm 4 hoạt động: Khởi động; Hình thành kiến thức; Luyện tập; Vận dụng). Mỗi hoạt động cần nêu rõ Mục tiêu, Nội dung, Sản phẩm và Tổ chức thực hiện. Các bước công nghệ/AI phải được lồng ghép tường minh trong mục Tổ chức thực hiện.
+                Trình bày rõ ràng bằng tiếng Việt.
                 """
-                
-                ai_response = call_gemini_api_direct(api_key_input, prompt_giao_an)
-                
-                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response or "Lỗi không thể" in ai_response:
-                    st.error(ai_response)
-                else:
-                    st.success("✨ Đã tạo xong KHBD thành công!")
-                    st.markdown(ai_response)
+                try:
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt_giao_an)
+                    st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
+                    st.markdown(response.text)
                     
-                    # Gọi hàm xuất Word và truyền đầy đủ đối số đã sửa lỗi ngoặc
-                    docx_data = export_to_docx(ai_response, f"KHBD: {ten_bai}", tac_gia, don_vi)
+                    docx_data = export_to_docx(response.text, f"KHBD: {ten_bai}", tac_gia, don_vi)
                     
                     st.download_button(
                         label="📥 Tải KHBD bản Word (.docx)",
@@ -206,23 +185,29 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                         file_name=f"KHBD_{ten_bai.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
+                except Exception as e:
+                    st.error(f"Có lỗi xảy ra khi gọi AI: {e}")
 
 elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
+    st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) chứa tài liệu nguồn bên dưới.")
     
-    uploaded_file = st.file_uploader("📥 Đính kèm file Word (.docx) chứa kiến thức nguồn:", type=["docx"])
+    # KHU VỰC TẢI FILE WORD ĐÍNH KÈM
+    uploaded_file = st.file_uploader("📥 Đính kèm file Word (.docx) chứa kiến thức nguồn (Tùy chọn):", type=["docx"])
     
+    # Nếu có file tải lên, tự động đọc nội dung đưa vào biến, ngược lại dùng văn bản nhập tay
     file_content = ""
     if uploaded_file is not None:
         file_content = read_uploaded_docx(uploaded_file)
         if file_content:
-            st.success(f"📎 Đã đọc nội dung từ file: {uploaded_file.name}")
+            st.success(f"📎 Đã đọc nội dung thành công từ file: {uploaded_file.name}")
             
+    # Ô nhập văn bản (sẽ hiển thị nội dung file nếu thầy đăng tải file thành công)
     tai_lieu = st.text_area(
         "Nội dung/Văn bản kiến thức nguồn:", 
         value=file_content, 
         height=200, 
-        placeholder="Dán đoạn văn bản kiến thức vào đây..."
+        placeholder="Dán đoạn văn bản kiến thức hoặc nội dung file Word sẽ tự động xuất hiện ở đây sau khi tải lên..."
     )
     
     col_type, col_num = st.columns(2)
@@ -232,32 +217,37 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if not api_key_input:
-            st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
+        if not client:
+            st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
-            st.warning("Vui lòng nhập nội dung tài liệu nguồn.")
+            st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
         else:
             with st.spinner("AI đang phân tích dữ liệu nguồn và thiết lập bộ câu hỏi..."):
                 if loai_cau_hoi == "Câu hỏi Trắc nghiệm":
                     prompt_cau_hoi = f"""
-                    Dựa trên văn bản tài liệu được cung cấp, hãy tạo ra {so_luong} câu hỏi TRẮC NGHIỆM (A, B, C, D), có 1 đáp án đúng.
-                    Phân tách theo các cấp độ: Nhận biết, Thông hiểu, Vận dụng. Có đáp án và giải thích chi tiết.
+                    Dựa trên văn bản tài liệu được cung cấp dưới đây, hãy tạo ra {so_luong} câu hỏi TRẮC NGHIỆM.
+                    Mỗi câu hỏi phải có 4 phương án lựa chọn (A, B, C, D) và chỉ có 1 đáp án đúng duy nhất.
+                    Các câu hỏi phải phân tách rõ ràng theo các cấp độ nhận thức: Nhận biết, Thông hiểu, Vận dụng.
+                    Sau danh sách câu hỏi, hãy tạo một phần riêng biệt hiển thị "BẢNG ĐÁP ÁN VÀ GIẢI THÍCH CHI TIẾT" cho từng câu.
                     """
                 else:
                     prompt_cau_hoi = f"""
-                    Dựa trên văn bản tài liệu được cung cấp, hãy tạo ra {so_luong} câu hỏi TỰ LUẬN phân tách theo các cấp độ kèm hướng dẫn chấm chi tiết.
+                    Dựa trên văn bản tài liệu được cung cấp dưới đây, hãy tạo ra {so_luong} câu hỏi TỰ LUẬN.
+                    Các câu hỏi tự luận cần mang tính sư phạm, kích thích tư duy, phân tách theo các cấp độ (Nhận biết, Thông hiểu, Vận dụng thấp/Vận dụng cao).
+                    Sau danh sách câu hỏi, hãy thiết lập mục "HƯỚNG DẪN CHẤM VÀ Ý CHÍNH TRẢ LỜI CHI TIẾT" cho từng câu hỏi tự luận đó.
                     """
                 
+                # Ghép tài liệu nguồn vào prompt chung gửi đến mô hình Gemini
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
-                ai_response = call_gemini_api_direct(api_key_input, prompt_toan_van)
                 
-                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response or "Lỗi không thể" in ai_response:
-                    st.error(ai_response)
-                else:
+                try:
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt_toan_van)
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
-                    st.markdown(ai_response)
+                    st.markdown(response.text)
                     
-                    docx_data = export_to_docx(ai_response, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
+                    # Xuất bản file Word để thầy tải về
+                    docx_data = export_to_docx(response.text, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
                     
                     st.download_button(
                         label=f"📥 Tải bộ {loai_cau_hoi.lower()} bản Word (.docx)",
@@ -265,3 +255,5 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                         file_name=f"Ngan_hang_{loai_cau_hoi.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
+                except Exception as e:
+                    st.error(f"Có lỗi xảy ra khi gọi AI: {e}")
