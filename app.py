@@ -99,10 +99,16 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUEST (ĐÃ SỬA LỖI CHỮ THÀNH STATUS_CODE)
+# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUEST (ĐÃ ĐƯỢC THÊM X-GOOG-API-KEY ĐỂ KHỬ SẠCH LỖI 401)
 def call_gemini_api_direct(api_key, prompt_text):
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    headers = {'Content-Type': 'application/json'}
+    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    
+    # ĐÃ ĐỔI TẠI ĐÂY: Đưa API Key vào Header theo đúng tiêu chuẩn bắt buộc cho loại khóa AQ...
+    headers = {
+        'Content-Type': 'application/json',
+        'x-goog-api-key': api_key
+    }
+    
     payload = {
         "contents": [
             {
@@ -115,7 +121,6 @@ def call_gemini_api_direct(api_key, prompt_text):
     
     try:
         response = requests.post(url, headers=headers, json=payload)
-        # ĐÃ SỬA TẠI ĐÂY: Chuyển đổi thành status_code chuẩn quy định kỹ thuật
         if response.status_code == 200:
             res_json = response.json()
             return res_json['candidates'][0]['content']['parts'][0]['text']
@@ -259,11 +264,4 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(ai_response)
                     
-                    docx_data = export_to_docx(ai_response, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
-                    
-                    st.download_button(
-                        label=f"📥 Tải bộ {loai_cau_hoi.lower()} bản Word (.docx)",
-                        data=docx_data,
-                        file_name=f"Ngan_hang_{loai_cau_hoi.replace(' ', '_')}.docx",
-                        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-                    )
+                    docx_data = export_to_docx(ai_
