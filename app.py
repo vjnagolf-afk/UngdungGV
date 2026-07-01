@@ -1,6 +1,7 @@
 import streamlit as st
-from google import genai
 import io
+import requests
+import json
 from docx import Document
 from docx.shared import Pt, Inches
 
@@ -98,20 +99,38 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
+# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUEST (HÓA GIẢI LỖI 401)
+def call_gemini_api_direct(api_key, prompt_text):
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
+    headers = {'Content-Type': 'application/json'}
+    payload = {
+        "contents": [
+            {
+                "parts": [
+                    {"text": prompt_text}
+                ]
+            }
+        ]
+    }
+    
+    response = requests.post(url, headers=headers, json=payload)
+    if response.status_color == 200:
+        res_json = response.json()
+        try:
+            return res_json['candidates'][0]['content']['parts'][0]['text']
+        except Exception:
+            return f"Lỗi cấu trúc phản hồi từ AI: {response.text}"
+    else:
+        return f"Lỗi kết nối từ máy chủ Google ({response.status_code}): {response.text}"
+
+
 # 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
-client = None
-
 if api_key_input:
-    try:
-        # Sử dụng genai.Client cấu hình trực tiếp cho hệ thống SDK mới tương thích mọi loại khóa
-        client = genai.Client(api_key=api_key_input)
-        st.sidebar.success("🔑 Đã kết nối và kích hoạt API Key thành công!")
-    except Exception as e:
-        st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
+    st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
-    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key của bạn vào ô trên để sử dụng các tính năng AI.")
+    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key của bạn vào ô trên để sử dụng.")
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -142,7 +161,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if client is None:
+        if not api_key_input:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
@@ -165,16 +184,16 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 III. Tiến trình dạy học (Gồm 4 hoạt động: Khởi động; Hình thành kiến thức; Luyện tập; Vận dụng). Mỗi hoạt động cần nêu rõ Mục tiêu, Nội dung, Sản phẩm và Tổ chức thực hiện. Các bước công nghệ/AI phải được lồng ghép tường minh trong mục Tổ chức thực hiện.
                 Trình bày rõ ràng bằng tiếng Việt.
                 """
-                try:
-                    # Sử dụng phương thức generate_content chuẩn của bộ thư viện mới
-                    response = client.models.generate_content(
-                        model='gemini-1.5-flash',
-                        contents=prompt_giao_an,
-                    )
+                
+                ai_response = call_gemini_api_direct(api_key_input, prompt_giao_an)
+                
+                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response:
+                    st.error(ai_response)
+                else:
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
-                    st.markdown(response.text)
+                    st.markdown(ai_response)
                     
-                    docx_data = export_to_docx(response.text, f"KHBD: {ten_bai}", tac_gia, don_vi)
+                    docx_data = export_to_docx(ai_response, f"KHBD: {ten_bai}", tac_gia, don_vi)
                     
                     st.download_button(
                         label="📥 Tải KHBD bản Word (.docx)",
@@ -182,8 +201,6 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                         file_name=f"KHBD_{ten_bai.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
-                except Exception as e:
-                    st.error(f"Có lỗi xảy ra khi gọi AI: {e}")
 
 elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
@@ -211,7 +228,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if client is None:
+        if not api_key_input:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
@@ -233,15 +250,15 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
-                try:
-                    response = client.models.generate_content(
-                        model='gemini-1.5-flash',
-                        contents=prompt_toan_van,
-                    )
+                ai_response = call_gemini_api_direct(api_key_input, prompt_toan_van)
+                
+                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response:
+                    st.error(ai_response)
+                else:
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
-                    st.markdown(response.text)
+                    st.markdown(ai_response)
                     
-                    docx_data = export_to_docx(response.text, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
+                    docx_data = export_to_docx(ai_response, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
                     
                     st.download_button(
                         label=f"📥 Tải bộ {loai_cau_hoi.lower()} bản Word (.docx)",
@@ -249,5 +266,3 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                         file_name=f"Ngan_hang_{loai_cau_hoi.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
-                except Exception as e:
-                    st.error(f"Có lỗi xảy ra khi gọi AI: {e}")
