@@ -181,7 +181,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 Trình bày rõ ràng bằng tiếng Việt.
                 """
                 try:
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(prompt_giao_an)
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
                     st.markdown(response.text)
@@ -246,7 +246,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    model = genai.GenerativeModel('gemini-pro')
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(prompt_toan_van)
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(response.text)
