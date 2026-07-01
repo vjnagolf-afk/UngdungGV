@@ -109,7 +109,6 @@ def read_uploaded_pdf(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
 if api_key_input:
-    # Trở về hàm cấu hình chuẩn của Google để tránh lỗi cú pháp
     genai.configure(api_key=api_key_input)
     st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
@@ -187,7 +186,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 KẾ HOẠCH BÀI DẠY
                 MÔN HỌC: [Tên môn học] - [Khối lớp]
                 BÀI HỌC: [Tên bài học]
-                THỜI LƯỢ lượng]
+                THỜI LƯỢNG: [Thời lượng]
 
                 YÊU CẦU BẮT BUỘC VỀ NỘI DUNG "TỔ CHỨC THỰC HIỆN":
                 Trong các hoạt động học của tiến trình dạy học, tại mục "Tổ chức thực hiện", bạn bắt buộc phải trình bày chi tiết, cụ thể các bước tổ chức hoạt động học cho học sinh từ chuyển giao nhiệm vụ; theo dõi, hướng dẫn, kiểm tra, đánh giá quá trình và kết quả thực hiện nhiệm vụ thông qua sản phẩm học tập bao gồm đủ 4 bước sau:
@@ -200,9 +199,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # FIX TRIỆT ĐỂ: Sử dụng đường dẫn mô hình đầy đủ bao gồm định danh 'models/' 
-                    # Điều này giúp các phiên bản API cũ tự động định tuyến chính xác mà không báo lỗi 404
-                    model = genai.GenerativeModel('models/gemini-1.5-flash')
+                    # GIẢI PHÁP ĐỒNG BỘ: Chuyển về dòng mô hình 'gemini-pro' tương thích tuyệt đối với endpoint v1beta cũ
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
@@ -272,8 +270,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # Đã đồng bộ thêm tiền tố định tuyến 'models/' vào trước mô hình ngân hàng câu hỏi
-                    model = genai.GenerativeModel('models/gemini-1.5-flash')
+                    # Đã chuyển đồng bộ sang mô hình 'gemini-pro' ổn định
+                    model = genai.GenerativeModel('gemini-pro')
                     response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
