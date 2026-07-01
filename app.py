@@ -2,6 +2,7 @@ import streamlit as st
 import io
 from docx import Document
 from docx.shared import Pt, Inches
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 import google.generativeai as genai
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
@@ -20,7 +21,7 @@ st.markdown("---")
 def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_vi="THCS Nguyễn Chí Thanh"):
     doc = Document()
     
-    # Định dạng lề trang chuẩn hành chính (Top, Bottom, Left, Right = 2cm)
+    # Định dạng lề trang chuẩn hành chính (Top, Bottom = 2cm; Left = 3cm; Right = 1.5cm)
     for section in doc.sections:
         section.top_margin = Inches(0.79)
         section.bottom_margin = Inches(0.79)
@@ -44,17 +45,9 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
     title_run = title.add_run(title_name.upper())
     title_run.bold = True
     title_run.font.size = Pt(15)
-    title.alignment = 1 # Căn giữa
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER # CĂN GIỮA TIÊU ĐỀ CHÍNH
     title.paragraph_format.space_before = Pt(12)
-    title.paragraph_format.space_after = Pt(6)
-
-    # Nếu có thông tin tác giả, chèn vào ngay dưới tiêu đề bài học
-    if tac_gia:
-        p_tg = doc.add_paragraph()
-        run_tg = p_tg.add_run(f"Giáo viên thực hiện: {tac_gia}")
-        run_tg.italic = True
-        p_tg.alignment = 1 # Căn giữa
-        p_tg.paragraph_format.space_after = Pt(18)
+    title.paragraph_format.space_after = Pt(12)
 
     # Duyệt từng dòng văn bản từ AI để đưa vào file Word
     lines = text_content.split('\n')
@@ -65,12 +58,23 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
             
         p = doc.add_paragraph()
         
+        # MẶC ĐỊNH: Căn đều 2 bên đối với phần thân văn bản
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY 
+        
+        # KIỂM TRA ĐIỀU KIỆN: Căn giữa đối với các tiêu đề thông tin bài học cụ thể
+        upper_line = cleaned_line.upper()
+        if any(keyword in upper_line for keyword in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC:", "LỚP:", "BÀI HỌC:", "THỜI LƯỢNG:"]):
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+
         # Xử lý các tiêu đề lớn dạng # hoặc ## hoặc ### từ Markdown
         if cleaned_line.startswith('#'):
             text = cleaned_line.lstrip('#').strip()
             run = p.add_run(text)
             run.bold = True
             run.font.size = Pt(14)
+            # Giữ căn giữa nếu tiêu đề chứa từ khóa thông tin cố định
+            if any(keyword in text.upper() for keyword in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC", "LỚP", "BÀI HỌC", "THỜI LƯỢNG"]):
+                p.alignment = WD_ALIGN_PARAGRAPH.CENTER
         # Xử lý các dòng có chữ in đậm dạng **văn bản**
         elif '**' in cleaned_line:
             parts = cleaned_line.split('**')
@@ -103,7 +107,6 @@ def read_uploaded_docx(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AIza...):", type="password")
 
 if api_key_input:
-    # Khởi tạo cấu hình API Key chuẩn của Google
     genai.configure(api_key=api_key_input)
     st.sidebar.success("🔑 Đã kết nối mã khóa API vào hệ thống!")
 else:
@@ -123,11 +126,34 @@ st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
 
+# CHỨC NĂNG MỚI: TẢI TÀI LIỆU GỢI Ý / SÁCH GIÁO KHOA MẪU KHBD
+st.sidebar.markdown("---")
+st.sidebar.subheader("📁 Kho tài liệu hướng dẫn xây dựng KHBD")
+st.sidebar.info("Thầy cô có thể tải các tài liệu hướng dẫn hoặc cấu trúc khung kế hoạch bài dạy mẫu dưới đây:")
+
+# Tạo file tài liệu mẫu ảo (Thầy có thể dán nội dung hướng dẫn thực tế vào đây)
+huong_dan_text = """HƯỚNG DẪN XÂY DỰNG KẾ HOẠCH BÀI DẠY (KHBD) CHUẨN CÔNG VĂN 5512
+1. Khung kế hoạch bài dạy phải đảm bảo đầy đủ các mục: Mục tiêu (Kiến thức, Năng lực, Phẩm chất), Thiết bị dạy học và học liệu, Tiến trình dạy học.
+2. Trong mục "Tổ chức thực hiện" của mỗi Hoạt động học, bắt buộc phải trình bày cụ thể theo 4 bước bài bản:
+   - Bước 1: Chuyển giao nhiệm vụ học tập.
+   - Bước 2: Thực hiện nhiệm vụ học tập (Giáo viên theo dõi, hướng dẫn, trợ giúp).
+   - Bước 3: Báo cáo kết quả và thảo luận.
+   - Bước 4: Kết luận, nhận định (Giáo viên đánh giá quá trình và kết quả thông qua sản phẩm học tập).
+"""
+doc_mau_data = export_to_docx(huong_dan_text, "Hướng dẫn xây dựng KHBD chuẩn 5512", tac_gia, don_vi)
+
+st.sidebar.download_button(
+    label="📥 Tải Sách hướng dẫn KHBD mẫu (.docx)",
+    data=doc_mau_data,
+    file_name="Huong_dan_xay_dung_KHBD_5512.docx",
+    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+)
+
 
 # 4. XỬ LÝ LOGIC HIỂN THỊ CHỨC NĂNG
 if chức_năng == "1. Thiết kế KHBD thông minh":
     st.header("📋 Công cụ thiết kế Kế hoạch bài dạy (KHBD) thông minh")
-    st.info("💡 Hệ thống đã được lập trình để luôn luôn tích hợp sẵn năng lực số và giáo dục trí tuệ nhân tạo (AI) vào tiến trình bài học của thầy.")
+    st.info("💡 Hệ thống đã được lập trình để tự động tích hợp lồng ghép năng lực số và giáo dục trí tuệ nhân tạo (AI) phù hợp với nội dung bài học.")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -146,6 +172,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
             st.warning("Vui lòng điền tên bài học.")
         else:
             with st.spinner("AI đang thiết lập tiến trình bài dạy, vui lòng đợi..."):
+                # RÀNG BUỘC MỚI: Siết chặt quy trình 4 bước cụ thể của phần "Tổ chức thực hiện" trong Prompt
                 prompt_giao_an = f"""
                 Bạn là một giáo viên THCS và là chuyên gia sư phạm Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
                 - Tên bài học: {ten_bai}
@@ -154,9 +181,21 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Thời lượng: {thoi_luong}
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
-                YÊU CẦU BẮT BUỘC: 
-                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
-                Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục Việt Nam. Trình bày rõ ràng bằng tiếng Việt.
+                YÊU CẦU BẮT BUỘC VỀ ĐỊNH DẠNG VĂN BẢN:
+                Đầu văn bản phải ghi rõ các dòng thông tin sau theo cấu trúc (vui lòng viết hoa đúng cụm từ khóa):
+                KẾ HOẠCH BÀI DẠY
+                MÔN HỌC: {mon_hoc} - {lop}
+                BÀI HỌC: {ten_bai}
+                THỜI LƯỢNG: {thoi_luong}
+
+                YÊU CẦU BẮT BUỘC VỀ NỘI DUNG "TỔ CHỨC THỰC HIỆN":
+                Trong các hoạt động học của tiến trình dạy học, tại mục "Tổ chức thực hiện", bạn bắt buộc phải trình bày chi tiết, cụ thể các bước tổ chức hoạt động học cho học sinh theo quy định bao gồm đủ 4 bước sau:
+                1. Chuyển giao nhiệm vụ: Nêu rõ lệnh gọi, câu hỏi, nhiệm vụ cụ thể giao cho học sinh (cá nhân/nhóm).
+                2. Thực hiện nhiệm vụ: Mô tả cụ thể hoạt động của học sinh; hoạt động theo dõi, hướng dẫn, trợ giúp và kiểm tra của giáo viên trong quá trình học sinh làm việc.
+                3. Báo cáo thảo luận: Mô tả cách thức tổ chức cho học sinh báo cáo kết quả và thảo luận tranh biện.
+                4. Kết luận, nhận định: Giáo viên chốt kiến thức, thực hiện kiểm tra, đánh giá quá trình và kết quả thực hiện nhiệm vụ của học sinh thông qua các sản phẩm học tập cụ thể.
+
+                Ngoài ra, hãy luôn tích hợp lồng ghép giáo dục năng lực số và nội dung giáo dục trí tuệ nhân tạo (AI) một cách khéo léo, phù hợp với lứa tuổi học sinh lớp đang chọn. Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
                 try:
@@ -201,7 +240,6 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     with col_type:
         loai_cau_hoi = st.radio("Chọn định dạng câu hỏi cần tạo:", ("Câu hỏi Trắc nghiệm", "Câu hỏi Tự luận"))
     with col_num:
-        # ĐÃ SỬA CHÍNH XÁC: min_value và max_value không còn bị trùng lặp
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
