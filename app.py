@@ -2,7 +2,6 @@ import streamlit as st
 import io
 from docx import Document
 from docx.shared import Pt, Inches
-# SỬ DỤNG THƯ VIỆN ỔN ĐỊNH TUYỆT ĐỐI ĐỂ TƯƠNG THÍCH MÃ AQ...
 import google.generativeai as genai
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
@@ -161,10 +160,10 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # Gọi mô hình qua phương thức chuẩn hóa, tự động xử lý định tuyến cho mã AQ...
+                    # ĐÃ SỬA: Cấu hình chuẩn hóa cho tính năng Google Search Grounding
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools='google_search' # Kích hoạt tính năng tìm kiếm của Google
+                        tools=[{"google_search": {}}]
                     )
                     
                     response = model.generate_content(
@@ -239,9 +238,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
+                    # ĐÃ SỬA: Cấu hình chuẩn hóa cho tính năng Google Search Grounding
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools='google_search'
+                        tools=[{"google_search": {}}]
                     )
                     
                     response = model.generate_content(
