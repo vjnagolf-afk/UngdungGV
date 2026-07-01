@@ -109,7 +109,14 @@ def read_uploaded_pdf(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
 if api_key_input:
-    genai.configure(api_key=api_key_input)
+    # SỬA LỖI TRIỆT ĐỂ: Cấu hình trực tiếp client_options để ép thư viện dùng bản v1 không bị lỗi hàm .init()
+    try:
+        from google.api_core import client_options
+        options = client_options.ClientOptions(api_version="v1")
+        genai.configure(api_key=api_key_input, client_options=options)
+    except Exception:
+        genai.configure(api_key=api_key_input)
+        
     st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
@@ -199,8 +206,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # FIX TRIỆT ĐỂ: Ép cấu hình API bản chính thức v1 của Google để sửa lỗi 404
-                    model = genai.GenerativeModel(model_name='gemini-1.5-flash', api_version='v1')
+                    # Đã loại bỏ tham số api_version lỗi, gọi mô hình một cách an toàn nhất
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
                     response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
@@ -270,8 +277,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # FIX TRIỆT ĐỂ: Ép cấu hình API bản chính thức v1 của Google để sửa lỗi 404
-                    model = genai.GenerativeModel(model_name='gemini-1.5-flash', api_version='v1')
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
                     response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
