@@ -1,3 +1,4 @@
 google-generativeai
 python-docx
 streamlit
+google-genai
