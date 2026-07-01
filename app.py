@@ -160,11 +160,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # ĐÃ CẬP NHẬT: Cấu hình chuẩn hóa hoàn toàn cấu trúc google_search_retrieval
-                    model = genai.GenerativeModel(
-                        model_name='gemini-1.5-flash',
-                        tools=[{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "DYNAMIC", "dynamic_threshold": 0.3}}}]
-                    )
+                    # TINH GỌN: Bỏ tools tìm kiếm để tránh nghẽn luồng và tăng tốc xử lý 100%
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
                     
                     response = model.generate_content(
                         prompt_giao_an,
@@ -238,11 +235,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # ĐA CẬP NHẬT: Cấu hình chuẩn hóa hoàn toàn cấu trúc google_search_retrieval
-                    model = genai.GenerativeModel(
-                        model_name='gemini-1.5-flash',
-                        tools=[{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "DYNAMIC", "dynamic_threshold": 0.3}}}]
-                    )
+                    # TINH GỌN: Bỏ tools tìm kiếm để ứng dụng phản hồi mượt mà ổn định nhất
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
                     
                     response = model.generate_content(
                         prompt_toan_van,
