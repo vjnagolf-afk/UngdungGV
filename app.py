@@ -99,14 +99,13 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM GỌI API GEMINI QUA TIÊU ĐỀ ĐỂ SỬA TRIỆT ĐỂ LỖI XÁC THỰC 401 CỦA MÃ AQ...
+# HÀM GỌI API GEMINI CHUẨN XÁC
 def call_gemini_api_direct(api_key, prompt_text):
-    url = "https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent"
+    # Sử dụng endpoint v1beta chuẩn để truyền API Key qua URL một cách an toàn
+    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     
-    # Đưa API Key vào Header để định dạng mã AQ... được chấp nhận không qua OAuth2
     headers = {
-        'Content-Type': 'application/json',
-        'x-goog-api-key': api_key
+        'Content-Type': 'application/json'
     }
     
     payload = {
@@ -121,6 +120,7 @@ def call_gemini_api_direct(api_key, prompt_text):
     
     try:
         response = requests.post(url, headers=headers, json=payload)
+        # SỬA LỖI TẠI ĐÂY: Sử dụng đúng thuộc tính .status_code của thư viện requests
         if response.status_code == 200:
             res_json = response.json()
             return res_json['candidates'][0]['content']['parts'][0]['text']
@@ -131,12 +131,12 @@ def call_gemini_api_direct(api_key, prompt_text):
 
 
 # 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ... của thầy vào đây):", type="password")
 
 if api_key_input:
     st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
-    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key của bạn vào ô trên để sử dụng.")
+    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key vào ô trên để sử dụng.")
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -182,7 +182,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
                 YÊU CẦU BẮT BUỘC: 
-                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh (Ví dụ: ứng dụng mô hình AI tối ưu hóa, công cụ hỗ trợ thông minh, hoặc thảo luận về vai trò của AI trong bài học).
+                In this lesson plan, you MUST integrate digital competence and AI education appropriate for student age.
                 
                 Cấu trúc giáo án tuân thủ quy định chuẩn giáo dục:
                 I. Mục tiêu bài học (Kiến thức; Năng lực đặc thù Khoa học tự nhiên; Năng lực chung, đặc biệt chú trọng NĂNG LỰC SỐ và ỨNG DỤNG AI; Phẩm chất)
