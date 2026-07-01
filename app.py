@@ -1,5 +1,5 @@
 import streamlit as st
-import google.generativeai as genai
+from google import genai
 import io
 from docx import Document
 from docx.shared import Pt, Inches
@@ -98,21 +98,20 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP (BỎ MẬT KHẨU KHTN2026)
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn:", type="password")
+# 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
-He_thong_da_mo_khoa = False
+client = None
 
 if api_key_input:
     try:
-        # Cấu hình trực tiếp bằng khóa do người dùng nhập vào
-        genai.configure(api_key=api_key_input)
-        He_thong_da_mo_khoa = True
+        # Sử dụng genai.Client cấu hình trực tiếp cho hệ thống SDK mới tương thích mọi loại khóa
+        client = genai.Client(api_key=api_key_input)
         st.sidebar.success("🔑 Đã kết nối và kích hoạt API Key thành công!")
     except Exception as e:
         st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
 else:
-    st.sidebar.warning("⚠️ Vui lòng dán mã API Key của bạn vào ô trên để sử dụng các tính năng AI.")
+    st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key của bạn vào ô trên để sử dụng các tính năng AI.")
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -134,16 +133,16 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     
     col1, col2 = st.columns(2)
     with col1:
-        ten_bai = st.text_input("Tên bài học:", placeholder="Ví dụ: Lăng kính")
+        ten_bai = st.text_input("Tên bài học:", placeholder="Ví dụ: Thấu kính")
         lop = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"])
     with col2:
         mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
-        thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 2 tiết (90 phút)")
+        thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 3 tiết")
         
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if not He_thong_da_mo_khoa:
+        if client is None:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
@@ -167,8 +166,11 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 Trình bày rõ ràng bằng tiếng Việt.
                 """
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt_giao_an)
+                    # Sử dụng phương thức generate_content chuẩn của bộ thư viện mới
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=prompt_giao_an,
+                    )
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
                     st.markdown(response.text)
                     
@@ -209,7 +211,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if not He_thong_da_mo_khoa:
+        if client is None:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
@@ -232,8 +234,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    model = genai.GenerativeModel('gemini-1.5-flash')
-                    response = model.generate_content(prompt_toan_van)
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=prompt_toan_van,
+                    )
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(response.text)
                     
