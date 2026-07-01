@@ -2,9 +2,8 @@ import streamlit as st
 import io
 from docx import Document
 from docx.shared import Pt, Inches
-# SỬ DỤNG THƯ VIỆN SDK CHÍNH THỨC ĐỂ XỬ LÝ API KEY DẠNG AQ...
-from google import genai
-from google.genai import types
+# SỬ DỤNG THƯ VIỆN ỔN ĐỊNH TUYỆT ĐỐI ĐỂ TƯƠNG THÍCH MÃ AQ...
+import google.generativeai as genai
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
 st.set_page_config(
@@ -102,16 +101,12 @@ def read_uploaded_docx(uploaded_file):
 
 
 # 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN GIAO DIỆN BÊN TRÁI
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ...):", type="password")
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
 
-client = None
 if api_key_input:
-    try:
-        # Khởi tạo Client bằng thư viện google-genai chuẩn để tự mã hóa mã AQ...
-        client = genai.Client(api_key=api_key_input)
-        st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
-    except Exception as e:
-        st.sidebar.error(f"Lỗi khởi tạo API: {e}")
+    # Cấu hình API Key thông qua thư viện cốt lõi ổn định
+    genai.configure(api_key=api_key_input)
+    st.sidebar.success("🔑 Đã ghi nhận và cấu hình mã API Key thành công!")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
 
@@ -146,7 +141,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if not client:
+        if not api_key_input:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
@@ -161,22 +156,24 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
                 YÊU CẦU BẮT BUỘC: 
-                Incorporate digital capacity building and Artificial Intelligence (AI) components properly integrated into this lesson plan.
-                Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục. Trình bày rõ ràng bằng tiếng Việt.
+                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
+                Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục Việt Nam. Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
                 try:
-                    # GỌI QUA SDK CHÍNH THỨC CỦA GOOGLE - CHẠY ỔN ĐỊNH VỚI MÔ HÌNH FLASH
-                    response = client.models.generate_content(
-                        model='gemini-1.5-flash',
-                        contents=prompt_giao_an,
-                        config=types.GenerateContentConfig(
-                            temperature=1.0,
-                            max_output_tokens=65536,
-                            top_p=0.95,
-                            # Bật tính năng tra cứu Google Search chuẩn của thư viện SDK
-                            tools=[types.Tool(google_search=types.GoogleSearch())]
-                        )
+                    # Gọi mô hình qua phương thức chuẩn hóa, tự động xử lý định tuyến cho mã AQ...
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        tools='google_search' # Kích hoạt tính năng tìm kiếm của Google
+                    )
+                    
+                    response = model.generate_content(
+                        prompt_giao_an,
+                        generation_config={
+                            "temperature": 1.0,
+                            "max_output_tokens": 65536,
+                            "top_p": 0.95
+                        }
                     )
                     
                     ai_text = response.text
@@ -220,7 +217,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if not client:
+        if not api_key_input:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
@@ -242,16 +239,18 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # GỌI QUA SDK CHÍNH THỨC CỦA GOOGLE
-                    response = client.models.generate_content(
-                        model='gemini-1.5-flash',
-                        contents=prompt_toan_van,
-                        config=types.GenerateContentConfig(
-                            temperature=1.0,
-                            max_output_tokens=65536,
-                            top_p=0.95,
-                            tools=[types.Tool(google_search=types.GoogleSearch())]
-                        )
+                    model = genai.GenerativeModel(
+                        model_name='gemini-1.5-flash',
+                        tools='google_search'
+                    )
+                    
+                    response = model.generate_content(
+                        prompt_toan_van,
+                        generation_config={
+                            "temperature": 1.0,
+                            "max_output_tokens": 65536,
+                            "top_p": 0.95
+                        }
                     )
                     
                     ai_text = response.text
