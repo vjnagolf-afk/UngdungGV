@@ -1,7 +1,8 @@
 import streamlit as st
 import io
-import requests
-import json
+import os
+from google import genai
+from google.genai import types
 from docx import Document
 from docx.shared import Pt, Inches
 
@@ -99,43 +100,24 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUESTS (Bỏ qua thư viện google-generativeai bị lỗi auth)
-def call_gemini_api_direct(api_key, prompt_text):
-    # Ép hệ thống truyền key qua tham số URL, giúp chấp nhận cả định dạng mã AQ... của thầy
-    url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
-    
-    headers = {
-        'Content-Type': 'application/json'
-    }
-    
-    payload = {
-        "contents": [
-            {
-                "parts": [
-                    {"text": prompt_text}
-                ]
-            }
-        ]
-    }
-    
-    try:
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            res_json = response.json()
-            return res_json['candidates'][0]['content']['parts'][0]['text']
-        else:
-            return f"Lỗi từ máy chủ Google ({response.status_code}): {response.text}"
-    except Exception as e:
-        return f"Lỗi không thể kết nối mạng: {e}"
 
+# 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN SIDEBAR
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
 
-# 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN GIAO DIỆN
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ... hoặc AIzaSy...):", type="password")
-
+client = None
 if api_key_input:
-    st.sidebar.success("🔑 Đã kết nối mã khóa API vào hệ thống!")
+    try:
+        # Sử dụng cấu hình Client mới kết hợp ClientOptions để khắc phục lỗi Auth 401 của mã AQ...
+        client = genai.Client(
+            api_key=api_key_input,
+            client_options=types.ClientOptions(api_key=api_key_input)
+        )
+        st.sidebar.success("🔑 Đã kết nối hệ thống bằng SDK mới thành công!")
+    except Exception as e:
+        st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán toàn bộ mã API Key vào ô trên để sử dụng.")
+
 
 # 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
@@ -149,6 +131,17 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
+
+
+# CẤU HÌNH GENERATION CONFIG & TOOLS THEO CHUẨN CỦA THẦY
+tools = [{'type': 'google_search'}]
+generation_config = {
+    'temperature': 1,
+    'max_output_tokens': 65536,
+    'top_p': 0.95,
+    'thinking_level': 'high',
+}
+
 
 # 4. XỬ LÝ LOGIC CHO TỪNG TÍNH NĂNG
 if chức_năng == "1. Thiết kế KHBD thông minh":
@@ -166,12 +159,12 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if not api_key_input:
+        if not client:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
         else:
-            with st.spinner("AI đang nghiên cứu và soạn thảo KHBD tích hợp công nghệ, vui lòng đợi..."):
+            with st.spinner("AI mã nguồn mới (Gemini 3 Preview) đang suy nghĩ chuyên sâu để soạn KHBD, vui lòng đợi..."):
                 prompt_giao_an = f"""
                 Bạn là một giáo viên THCS và là chuyên gia sư phạm đi đầu trong đổi mới sáng tạo, chuyển đổi số giáo dục tại Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
                 - Tên bài học: {ten_bai}
@@ -190,15 +183,22 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
-                ai_response = call_gemini_api_direct(api_key_input, prompt_giao_an)
-                
-                if "Lỗi từ máy chủ" in ai_response or "Lỗi không thể" in ai_response:
-                    st.error(ai_response)
-                else:
-                    st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
-                    st.markdown(ai_response)
+                try:
+                    # Sử dụng cấu hình interaction theo chuẩn code mới của thầy
+                    interaction = client.interactions.create(
+                        model='models/gemini-3-flash-preview',
+                        input=prompt_giao_an,
+                        tools=tools,
+                        generation_config=generation_config,
+                    )
                     
-                    docx_data = export_to_docx(ai_response, f"KHBD: {ten_bai}", tac_gia, don_vi)
+                    # Lấy kết quả từ bước cuối cùng của AI
+                    ai_text = interaction.steps[-1].model_turn.parts[0].text
+                    
+                    st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
+                    st.markdown(ai_text)
+                    
+                    docx_data = export_to_docx(ai_text, f"KHBD: {ten_bai}", tac_gia, don_vi)
                     
                     st.download_button(
                         label="📥 Tải KHBD bản Word (.docx)",
@@ -206,6 +206,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                         file_name=f"KHBD_{ten_bai.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
+                except Exception as e:
+                    st.error(f"Có lỗi xảy ra khi gọi AI thế hệ mới: {e}")
 
 elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
@@ -233,7 +235,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if not api_key_input:
+        if not client:
             st.error("Vui lòng nhập khóa API Key ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
@@ -255,15 +257,21 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
-                ai_response = call_gemini_api_direct(api_key_input, prompt_toan_van)
-                
-                if "Lỗi từ máy chủ" in ai_response or "Lỗi không thể" in ai_response:
-                    st.error(ai_response)
-                else:
-                    st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
-                    st.markdown(ai_response)
+                try:
+                    # Gọi API theo bộ SDK google-genai mới
+                    interaction = client.interactions.create(
+                        model='models/gemini-3-flash-preview',
+                        input=prompt_toan_van,
+                        tools=tools,
+                        generation_config=generation_config,
+                    )
                     
-                    docx_data = export_to_docx(ai_response, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
+                    ai_text = interaction.steps[-1].model_turn.parts[0].text
+                    
+                    st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
+                    st.markdown(ai_text)
+                    
+                    docx_data = export_to_docx(ai_text, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
                     
                     st.download_button(
                         label=f"📥 Tải bộ {loai_cau_hoi.lower()} bản Word (.docx)",
@@ -271,3 +279,5 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                         file_name=f"Ngan_hang_{loai_cau_hoi.replace(' ', '_')}.docx",
                         mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
                     )
+                except Exception as e:
+                    st.error(f"Có lỗi xảy ra khi gọi AI thế hệ mới: {e}")
