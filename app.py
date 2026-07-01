@@ -1,9 +1,10 @@
 import streamlit as st
 import io
-import requests
-import json
 from docx import Document
 from docx.shared import Pt, Inches
+# SỬ DỤNG THƯ VIỆN SDK CHÍNH THỨC ĐỂ XỬ LÝ API KEY DẠNG AQ...
+from google import genai
+from google.genai import types
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
 st.set_page_config(
@@ -100,53 +101,17 @@ def read_uploaded_docx(uploaded_file):
         return ""
 
 
-# LỚP GIẢ LẬP GỌI API GEMINI QUA HTTP REQUESTS 
-class CustomGeminiClient:
-    def __init__(self, api_key):
-        self.api_key = api_key
-        
-    def create_interaction(self, model, input_text, tools, generation_config):
-        url = f"https://generativelanguage.googleapis.com/v1beta/{model}:generateContent?key={self.api_key}"
-        headers = {'Content-Type': 'application/json'}
-        
-        # Cấu hình lại phần tools định dạng JSON thô chuẩn xác cho Google Search
-        api_tools = []
-        for t in tools:
-            if t.get('type') == 'google_search':
-                api_tools.append({'google_search': {}})
-                
-        payload = {
-            "contents": [{"parts": [{"text": input_text}]}],
-            "tools": api_tools,
-            "generationConfig": {
-                "temperature": generation_config.get('temperature', 1),
-                "maxOutputTokens": generation_config.get('max_output_tokens', 65536),
-                "topP": generation_config.get('top_p', 0.95),
-                "thinkingConfig": {
-                    "thinkingBudget": 1024 if generation_config.get('thinking_level') == 'high' else 0
-                }
-            }
-        }
-        
-        response = requests.post(url, headers=headers, json=payload)
-        if response.status_code == 200:
-            res_json = response.json()
-            # Trích xuất dữ liệu an toàn từ cấu trúc JSON trả về
-            try:
-                return res_json['candidates'][0]['content']['parts'][0]['text']
-            except KeyError:
-                raise Exception(f"Không lấy được văn bản. Phản hồi thô từ Google: {res_json}")
-        else:
-            raise Exception(f"Lỗi từ máy chủ Google ({response.status_code}): {response.text}")
-
-
 # 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN GIAO DIỆN BÊN TRÁI
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ...):", type="password")
 
 client = None
 if api_key_input:
-    client = CustomGeminiClient(api_key=api_key_input)
-    st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
+    try:
+        # Khởi tạo Client bằng thư viện google-genai chuẩn để tự mã hóa mã AQ...
+        client = genai.Client(api_key=api_key_input)
+        st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
+    except Exception as e:
+        st.sidebar.error(f"Lỗi khởi tạo API: {e}")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
 
@@ -163,16 +128,6 @@ st.sidebar.markdown("---")
 st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
-
-
-# CẤU HÌNH THAM SỐ GỐC CỦA THẦY
-tools = [{'type': 'google_search'}]
-generation_config = {
-    'temperature': 1,
-    'max_output_tokens': 65536,
-    'top_p': 0.95,
-    'thinking_level': 'high',
-}
 
 
 # 4. XỬ LÝ LOGIC HIỂN THỊ CHỨC NĂNG
@@ -206,20 +161,25 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
                 YÊU CẦU BẮT BUỘC: 
-                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
-                
+                Incorporate digital capacity building and Artificial Intelligence (AI) components properly integrated into this lesson plan.
                 Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục. Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
                 try:
-                    # SỬA LỖI: Cập nhật tên định danh chính xác model sang 'models/gemini-1.5-flash-latest'
-                    ai_text = client.create_interaction(
-                        model='models/gemini-1.5-flash-latest', 
-                        input_text=prompt_giao_an,
-                        tools=tools,
-                        generation_config=generation_config
+                    # GỌI QUA SDK CHÍNH THỨC CỦA GOOGLE - CHẠY ỔN ĐỊNH VỚI MÔ HÌNH FLASH
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=prompt_giao_an,
+                        config=types.GenerateContentConfig(
+                            temperature=1.0,
+                            max_output_tokens=65536,
+                            top_p=0.95,
+                            # Bật tính năng tra cứu Google Search chuẩn của thư viện SDK
+                            tools=[types.Tool(google_search=types.GoogleSearch())]
+                        )
                     )
                     
+                    ai_text = response.text
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
                     st.markdown(ai_text)
                     
@@ -282,14 +242,19 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # SỬA LỖI: Cập nhật tên định danh chính xác model sang 'models/gemini-1.5-flash-latest'
-                    ai_text = client.create_interaction(
-                        model='models/gemini-1.5-flash-latest',
-                        input_text=prompt_toan_van,
-                        tools=tools,
-                        generation_config=generation_config
+                    # GỌI QUA SDK CHÍNH THỨC CỦA GOOGLE
+                    response = client.models.generate_content(
+                        model='gemini-1.5-flash',
+                        contents=prompt_toan_van,
+                        config=types.GenerateContentConfig(
+                            temperature=1.0,
+                            max_output_tokens=65536,
+                            top_p=0.95,
+                            tools=[types.Tool(google_search=types.GoogleSearch())]
+                        )
                     )
                     
+                    ai_text = response.text
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(ai_text)
                     
