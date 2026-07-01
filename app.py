@@ -142,7 +142,6 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
         mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
         thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 1 tiết")
         
-    # CHỨC NĂNG MỚI THEO Ý THẦY: ĐÍNH KÈM TÀI LIỆU SGK HOẶC FILE BÀI HỌC (.PDF/.DOCX)
     st.markdown("##### 📁 Tài liệu gợi ý xây dựng KHBD (Ví dụ: File bài học trong Sách giáo khoa, tài liệu hướng dẫn)")
     uploaded_khbd_file = st.file_uploader(
         "Giáo viên có thể tải lên file PDF hoặc file Word chứa nội dung bài học để AI soạn bám sát tài liệu nguồn:", 
@@ -178,7 +177,6 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 """
                 
-                # Nếu giáo viên có tải lên tài liệu SGK/Bài học mẫu, ép AI phải đọc và bám sát tài liệu này
                 if khbd_source_content:
                     prompt_giao_an += f"\n- BẮT BUỘC BÁM SÁT NỘI DUNG TÀI LIỆU/SGK ĐƯỢC CUNG CẤP SAU ĐÂY:\n\"\"\"{khbd_source_content}\"\"\"\n"
                 
@@ -201,8 +199,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # FIX LỖI 404: Đổi sang mô hình chuẩn nhất gemini-1.5-flash
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # FIX TRIỆT ĐỂ: Ép cấu hình API bản chính thức v1 của Google để sửa lỗi 404
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash', api_version='v1')
                     response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
@@ -272,8 +270,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # FIX LỖI 404: Đổi sang mô hình chuẩn nhất gemini-1.5-flash
-                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    # FIX TRIỆT ĐỂ: Ép cấu hình API bản chính thức v1 của Google để sửa lỗi 404
+                    model = genai.GenerativeModel(model_name='gemini-1.5-flash', api_version='v1')
                     response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
