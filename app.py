@@ -103,7 +103,7 @@ def read_uploaded_docx(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
 
 if api_key_input:
-    # Cấu hình API Key thông qua thư viện cốt lõi ổn định
+    # Cấu hình API Key thông qua thư viện cốt lộ ổn định
     genai.configure(api_key=api_key_input)
     st.sidebar.success("🔑 Đã ghi nhận và cấu hình mã API Key thành công!")
 else:
@@ -155,15 +155,15 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
                 YÊU CẦU BẮT BUỘC: 
-                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
+                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
                 Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục Việt Nam. Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
                 try:
-                    # ĐÃ SỬA: Cấu hình chuẩn hóa cho tính năng Google Search Grounding
+                    # ĐA SỬA: Khai báo chuẩn hóa công cụ Google Search cho thư viện Google AI mới
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools=[{"google_search": {}}]
+                        tools=['google_search']
                     )
                     
                     response = model.generate_content(
@@ -238,10 +238,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # ĐÃ SỬA: Cấu hình chuẩn hóa cho tính năng Google Search Grounding
+                    # ĐA SỬA: Khai báo chuẩn hóa công cụ Google Search cho thư viện Google AI mới
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools=[{"google_search": {}}]
+                        tools=['google_search']
                     )
                     
                     response = model.generate_content(
