@@ -3,7 +3,7 @@ import io
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
-import google.generativeai as genai
+from google import genai
 from pypdf import PdfReader
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
@@ -109,7 +109,6 @@ def read_uploaded_pdf(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
 if api_key_input:
-    genai.configure(api_key=api_key_input)
     st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
@@ -199,9 +198,12 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # GIẢI PHÁP ĐỒNG BỘ: Chuyển về dòng mô hình 'gemini-pro' tương thích tuyệt đối với endpoint v1beta cũ
-                    model = genai.GenerativeModel('gemini-pro')
-                    response = model.generate_content(prompt_giao_an)
+                    # SỬ DỤNG SDK 2026 MỚI NHẤT: Gọi trực tiếp qua Client v1 chính thức
+                    client = genai.Client(api_key=api_key_input)
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt_giao_an,
+                    )
                     
                     ai_text = response.text
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
@@ -235,7 +237,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
             st.success(f"📎 Đã trích xuất nội dung thành công từ file: {uploaded_file.name}")
             
     tai_lieu = st.text_area(
-        "Nội dung/Văn bản kiến thức nguồn:", 
+        "Nội dung/Vavan bản kiến thức nguồn:", 
         value=file_content, 
         height=200, 
         placeholder="Dán đoạn văn bản kiến thức hoặc nội dung file tải lên sẽ tự động xuất hiện ở đây..."
@@ -270,9 +272,12 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # Đã chuyển đồng bộ sang mô hình 'gemini-pro' ổn định
-                    model = genai.GenerativeModel('gemini-pro')
-                    response = model.generate_content(prompt_toan_van)
+                    # SỬ DỤNG SDK MỚI CHO PHẦN NGÂN HÀNG CÂU HỎI
+                    client = genai.Client(api_key=api_key_input)
+                    response = client.models.generate_content(
+                        model='gemini-2.5-flash',
+                        contents=prompt_toan_van,
+                    )
                     
                     ai_text = response.text
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
