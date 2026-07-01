@@ -98,22 +98,31 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# 2. CẤU HÌNH KẾT NỐI API BẢO MẬT BẰNG MẬT KHẨU
+# 2. CẤU HÌNH PHÂN TÁCH LOGIC: MẬT KHẨU VÀ API KEY KHÁC NHAU
 MAT_KHAU_KICH_HOAT = "KHTN2026"  
-API_KEY_CUA_BAN = "AQ.Ab8RN6J-wsyOxw7frls8Hj88O_0vTOUHSofDko8h7KgDRlwQlg" 
+API_KEY_AN_DANH = "AQ.Ab8RN6J-wsyOxw7frls8Hj88O_0vTOUHSofDko8h7KgDRlwQlg" 
 
-# Hiển thị ô nhập mật khẩu ngắn gọn trên giao diện
+# Giao diện nhập mật khẩu ngắn gọn ở thanh bên trái
 mat_khau_nhap = st.sidebar.text_input("Nhập Mật khẩu kích hoạt ứng dụng:", type="password")
 
-client = None
+He_thong_da_mo_khoa = False
+
 if mat_khau_nhap:
+    # Logic kiểm tra: Nếu nhập đúng mật khẩu HOẶC thầy nhập thẳng API Key đều được chấp nhận
     if mat_khau_nhap == MAT_KHAU_KICH_HOAT:
         try:
-            genai.configure(api_key=API_KEY_CUA_BAN)
-            client = "CONNECTED" # Đánh dấu trạng thái kết nối thành công
-            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công!")
+            genai.configure(api_key=API_KEY_AN_DANH) # Kích hoạt bằng khóa bí mật
+            He_thong_da_mo_khoa = True
+            st.sidebar.success("🔑 Đã kích hoạt ứng dụng thành công bằng mật khẩu!")
         except Exception as e:
             st.sidebar.error(f"Lỗi cấu hình hệ thống: {e}")
+    elif mat_khau_nhap.startswith("AIza") or mat_khau_nhap.startswith("AQ."):
+        try:
+            genai.configure(api_key=mat_khau_nhap) # Trường hợp thầy nhập thẳng khóa API thật
+            He_thong_da_mo_khoa = True
+            st.sidebar.success("🔑 Đã kết nối trực tiếp bằng mã API Key!")
+        except Exception as e:
+            st.sidebar.error(f"Lỗi kết nối API Key: {e}")
     else:
         st.sidebar.error("❌ Mật khẩu kích hoạt không chính xác!")
 else:
@@ -148,7 +157,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
-        if not client:
+        if not He_thong_da_mo_khoa:
             st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
         elif not ten_bai:
             st.warning("Vui lòng điền tên bài học.")
@@ -192,17 +201,14 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
     st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) chứa tài liệu nguồn bên dưới.")
     
-    # KHU VỰC TẢI FILE WORD ĐÍNH KÈM
     uploaded_file = st.file_uploader("📥 Đính kèm file Word (.docx) chứa kiến thức nguồn (Tùy chọn):", type=["docx"])
     
-    # Nếu có file tải lên, tự động đọc nội dung đưa vào biến, ngược lại dùng văn bản nhập tay
     file_content = ""
     if uploaded_file is not None:
         file_content = read_uploaded_docx(uploaded_file)
         if file_content:
             st.success(f"📎 Đã đọc nội dung thành công từ file: {uploaded_file.name}")
             
-    # Ô nhập văn bản (sẽ hiển thị nội dung file nếu thầy đăng tải file thành công)
     tai_lieu = st.text_area(
         "Nội dung/Văn bản kiến thức nguồn:", 
         value=file_content, 
@@ -217,7 +223,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
         so_luong = st.slider("Số lượng câu hỏi cần tạo:", min_value=1, max_value=20, value=5)
     
     if st.button("⚡ Tạo ngân hàng câu hỏi"):
-        if not client:
+        if not He_thong_da_mo_khoa:
             st.error("Vui lòng nhập mật khẩu chính xác ở thanh bên trái trước khi thực hiện!")
         elif not tai_lieu:
             st.warning("Vui lòng nhập nội dung hoặc đính kèm file Word chứa tài liệu nguồn.")
@@ -237,7 +243,6 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                     Sau danh sách câu hỏi, hãy thiết lập mục "HƯỚNG DẪN CHẤM VÀ Ý CHÍNH TRẢ LỜI CHI TIẾT" cho từng câu hỏi tự luận đó.
                     """
                 
-                # Ghép tài liệu nguồn vào prompt chung gửi đến mô hình Gemini
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
@@ -246,7 +251,6 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
                     st.markdown(response.text)
                     
-                    # Xuất bản file Word để thầy tải về
                     docx_data = export_to_docx(response.text, f"Ngân hàng {loai_cau_hoi.lower()}", tac_gia, don_vi)
                     
                     st.download_button(
