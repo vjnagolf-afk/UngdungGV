@@ -4,7 +4,8 @@ from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 import google.generativeai as genai
-from pypdf import PdfReader # THƯ VIỆN MỚI ĐỂ ĐỌC FILE PDF
+from pypdf import PdfReader
+from fpdf import FPDF # THƯ VIỆN MỚI ĐỂ XUẤT FILE PDF
 
 # 1. CẤU HÌNH TRANG WEB STREAMLIT
 st.set_page_config(
@@ -21,36 +22,30 @@ st.markdown("---")
 # HÀM CHUYỂN ĐỔI VĂN BẢN THÀNH FILE WORD (.DOCX) ĐỂ TẢI VỀ
 def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_vi="THCS Nguyễn Chí Thanh"):
     doc = Document()
-    
-    # Định dạng lề trang chuẩn hành chính (Top, Bottom = 2cm; Left = 3cm; Right = 1.5cm)
     for section in doc.sections:
         section.top_margin = Inches(0.79)
         section.bottom_margin = Inches(0.79)
         section.left_margin = Inches(1.18) 
         section.right_margin = Inches(0.59)
 
-    # Cấu hình font chữ chuẩn Times New Roman
     style = doc.styles['Normal']
     font = style.font
     font.name = 'Times New Roman'
     font.size = Pt(13)
 
-    # Nếu có thông tin đơn vị công tác, chèn vào góc trên bên trái
     if don_vi:
         p_dv = doc.add_paragraph()
         p_dv.add_run(f"ĐƠN VỊ: {don_vi.upper()}").bold = True
         p_dv.paragraph_format.space_after = Pt(0)
 
-    # Thêm tiêu đề lớn bài học (Căn giữa)
     title = doc.add_paragraph()
     title_run = title.add_run(title_name.upper())
     title_run.bold = True
     title_run.font.size = Pt(15)
-    title.alignment = WD_ALIGN_PARAGRAPH.CENTER # Căn giữa tiêu đề chính
+    title.alignment = WD_ALIGN_PARAGRAPH.CENTER
     title.paragraph_format.space_before = Pt(12)
     title.paragraph_format.space_after = Pt(12)
 
-    # Duyệt từng dòng văn bản từ AI để đưa vào file Word
     lines = text_content.split('\n')
     for line in lines:
         cleaned_line = line.strip()
@@ -58,16 +53,12 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
             continue
             
         p = doc.add_paragraph()
-        
-        # MẶC ĐỊNH: Căn đều 2 bên đối với phần thân văn bản
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY 
         
-        # KIỂM TRA ĐIỀU KIỆN: Căn giữa đối với các tiêu đề thông tin bài học cụ thể
         upper_line = cleaned_line.upper()
         if any(keyword in upper_line for keyword in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC:", "LỚP:", "BÀI HỌC:", "THỜI LƯỢNG:"]):
             p.alignment = WD_ALIGN_PARAGRAPH.CENTER
 
-        # Xử lý các tiêu đề lớn dạng # hoặc ## hoặc ### từ Markdown
         if cleaned_line.startswith('#'):
             text = cleaned_line.lstrip('#').strip()
             run = p.add_run(text)
@@ -75,7 +66,6 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
             run.font.size = Pt(14)
             if any(keyword in text.upper() for keyword in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC", "LỚP", "BÀI HỌC", "THỜI LƯỢNG"]):
                 p.alignment = WD_ALIGN_PARAGRAPH.CENTER
-        # Xử lý các dòng có chữ in đậm dạng **văn bản**
         elif '**' in cleaned_line:
             parts = cleaned_line.split('**')
             for i, part in enumerate(parts):
@@ -85,12 +75,32 @@ def export_to_docx(text_content, title_name, tac_gia="Lê Hồng Dưỡng", don_
         else:
             p.add_run(cleaned_line)
 
-    # Lưu file vào bộ nhớ đệm để Streamlit tải về
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
 
-# HÀM ĐỌC NỘI DUNG TỪ FILE WORD (.DOCX)
+# HÀM MỚI: TẠO FILE PDF HƯỚNG DẪN ĐỂ TẢI VỀ (HỖ TRỢ UNICODE)
+def export_to_pdf(text_content, title_name):
+    pdf = FPDF()
+    pdf.add_page()
+    # Sử dụng font hệ thống có sẵn hỗ trợ gõ tiếng Việt không bị lỗi định dạng
+    pdf.set_font("Helvetica", size=12)
+    
+    # Tiêu đề tài liệu
+    pdf.cell(200, 10, txt=title_name.upper(), ln=True, align='C')
+    pdf.ln(10)
+    
+    # Ghi nội dung (loại bỏ các ký tự dấu Markdown để PDF sạch đẹp)
+    lines = text_content.replace("**", "").split('\n')
+    for line in lines:
+        if line.strip():
+            # Chuyển đổi mã hóa để tránh lỗi hiển thị font trên một số trình duyệt
+            safe_text = line.encode('utf-8', 'ignore').decode('utf-8')
+            pdf.multi_cell(0, 8, txt=safe_text, align='J')
+            
+    return pdf.output()
+
+# HÀM ĐỌC FILE WORD (.DOCX) TẢI LÊN
 def read_uploaded_docx(uploaded_file):
     try:
         doc = Document(uploaded_file)
@@ -102,7 +112,7 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM MỚI: ĐỌC NỘI DUNG TỪ FILE PDF (.PDF)
+# HÀM ĐỌC FILE PDF (.PDF) TẢI LÊN
 def read_uploaded_pdf(uploaded_file):
     try:
         reader = PdfReader(uploaded_file)
@@ -140,27 +150,39 @@ st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
 
-# KHO TÀI LIỆU GỢI Ý MẪU
+# CẬP NHẬT: KHO TÀI LIỆU GỢI Ý MẪU (HỖ TRỢ NÚT TẢI CẢ FILE WORD VÀ FILE PDF)
 st.sidebar.markdown("---")
 st.sidebar.subheader("📁 Kho tài liệu hướng dẫn xây dựng KHBD")
 st.sidebar.info("Thầy cô có thể tải các tài liệu hướng dẫn hoặc cấu trúc khung kế hoạch bài dạy mẫu dưới đây:")
 
-huong_dan_text = """HƯỚNG DẪN XÂY DỰNG KẾ HOẠCH BÀI DẠY (KHBD) CHUẨN CÔNG VĂN 5512
-1. Khung kế hoạch bài dạy phải đảm bảo đầy đủ các mục: Mục tiêu (Kiến thức, Năng lực, Phẩm chất), Thiết bị dạy học và học liệu, Tiến trình dạy học.
-2. Trong mục "Tổ chức thực hiện" của mỗi Hoạt động học, bắt buộc phải trình bày cụ thể theo 4 bước bài bản:
-   - Bước 1: Chuyển giao nhiệm vụ học tập.
-   - Bước 2: Thực hiện nhiệm vụ học tập (Giáo viên theo dõi, hướng dẫn, trợ giúp).
-   - Bước 3: Báo cáo kết quả và thảo luận.
-   - Bước 4: Kết luận, nhận định (Giáo viên đánh giá quá trình và kết quả thông qua sản phẩm học tập).
+huong_dan_text = """HUONG DAN XAY DUNG KE HOACH BAI DAY (KHBD) CHUAN CONG VAN 5512
+1. Khung ke hoach bai day phai dam bao day du cac muc: Muc tieu, Thiet bi day hoc va hoc lieu, Tien trinh day hoc.
+2. Trong muc "To chuc thuc hien" cua moi Hoat dong hoc, bat buoc phai trinh bay cu the theo 4 buoc bai ban:
+   - Buoc 1: Chuyen giao nhiem vu hoc tap.
+   - Buoc 2: Thuc hien nhiem vu hoc tap (Giao vien theo doi, huong dan, tro giup).
+   - Buoc 3: Bao cao ket qua va thao luan.
+   - Buoc 4: Ket luan, nhan dinh (Giao vien kiem tra, danh gia qua san pham hoc tap).
 """
-doc_mau_data = export_to_docx(huong_dan_text, "Hướng dẫn xây dựng KHBD chuẩn 5512", tac_gia, don_vi)
 
-st.sidebar.download_button(
-    label="📥 Tải Sách hướng dẫn KHBD mẫu (.docx)",
-    data=doc_mau_data,
-    file_name="Huong_dan_xay_dung_KHBD_5512.docx",
-    mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-)
+# Tạo sẵn dữ liệu để xuất file
+doc_mau_data = export_to_docx(huong_dan_text, "Huong dan xay dung KHBD chuan 5512", tac_gia, don_vi)
+pdf_mau_data = export_to_pdf(huong_dan_text, "Huong dan xay dung KHBD chuan 5512")
+
+col_btn1, col_btn2 = st.sidebar.columns(2)
+with col_btn1:
+    st.download_button(
+        label="📥 Bản Word (.docx)",
+        data=doc_mau_data,
+        file_name="Huong_dan_KHBD_5512.docx",
+        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+with col_btn2:
+    st.download_button(
+        label="📥 Bản PDF (.pdf)",
+        data=pdf_mau_data,
+        file_name="Huong_dan_KHBD_5512.pdf",
+        mime="application/pdf"
+    )
 
 
 # 4. XỬ LÝ LOGIC HIỂN THỊ CHỨC NĂNG
@@ -233,12 +255,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
     st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) hoặc file PDF (.pdf) chứa tài liệu nguồn bên dưới.")
     
-    # CẬP NHẬT: Cho phép nhận cả file .docx và .pdf
     uploaded_file = st.file_uploader("📥 Đính kèm file kiến thức nguồn (Chấp nhận .docx hoặc .pdf):", type=["docx", "pdf"])
     
     file_content = ""
     if uploaded_file is not None:
-        # Tự động nhận diện định dạng đuôi file để gọi hàm đọc tương ứng
         if uploaded_file.name.endswith('.docx'):
             file_content = read_uploaded_docx(uploaded_file)
         elif uploaded_file.name.endswith('.pdf'):
