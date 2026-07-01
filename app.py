@@ -100,12 +100,12 @@ def read_uploaded_docx(uploaded_file):
 
 
 # 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN GIAO DIỆN BÊN TRÁI
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AIza...):", type="password")
 
 if api_key_input:
-    # Cấu hình API Key thông qua thư viện cốt lõi ổn định
+    # Khởi tạo cấu hình API Key chuẩn của Google
     genai.configure(api_key=api_key_input)
-    st.sidebar.success("🔑 Đã ghi nhận và cấu hình mã API Key thành công!")
+    st.sidebar.success("🔑 Đã kết nối mã khóa API vào hệ thống!")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
 
@@ -132,7 +132,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
     col1, col2 = st.columns(2)
     with col1:
         ten_bai = st.text_input("Tên bài học:", placeholder="Ví dụ: Thấu kính")
-        lop = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"], index=3) # Mặc định chọn Lớp 9
+        lop = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"], index=3)
     with col2:
         mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
         thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 1 tiết")
@@ -147,7 +147,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
         else:
             with st.spinner("AI đang thiết lập tiến trình bài dạy, vui lòng đợi..."):
                 prompt_giao_an = f"""
-                Bạn là một giáo viên THCS và là chuyên gia sư phạm đi đầu trong đổi mới sáng tạo, chuyển đổi số giáo dục tại Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
+                Bạn là một giáo viên THCS và là chuyên gia sư phạm Việt Nam. Hãy lập một kế hoạch bài dạy (KHBD) hoàn chỉnh cho bài học sau:
                 - Tên bài học: {ten_bai}
                 - Môn học: {mon_hoc}
                 - Khối lớp: {lop}
@@ -155,22 +155,14 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
                 
                 YÊU CẦU BẮT BUỘC: 
-                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số (sử dụng thiết bị công nghệ, phần mềm mô phỏng, tra cứu số...) và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
+                Trong kế hoạch bài dạy này, bạn PHẢI tích hợp lồng ghép giáo dục năng lực số và nội dung giáo dục trí tuệ nhân tạo (AI) một cách phù hợp với lứa tuổi học sinh.
                 Cấu trúc giáo án tuân thủ quy định hành chính chuẩn giáo dục Việt Nam. Trình bày rõ ràng bằng tiếng Việt.
                 """
                 
                 try:
-                    # TINH GỌN: Bỏ tools tìm kiếm để tránh nghẽn luồng và tăng tốc xử lý 100%
-                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
-                    
-                    response = model.generate_content(
-                        prompt_giao_an,
-                        generation_config={
-                            "temperature": 1.0,
-                            "max_output_tokens": 65536,
-                            "top_p": 0.95
-                        }
-                    )
+                    # Gọi mô hình với tên định dạng chuẩn
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
@@ -235,17 +227,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # TINH GỌN: Bỏ tools tìm kiếm để ứng dụng phản hồi mượt mà ổn định nhất
-                    model = genai.GenerativeModel(model_name='gemini-1.5-flash')
-                    
-                    response = model.generate_content(
-                        prompt_toan_van,
-                        generation_config={
-                            "temperature": 1.0,
-                            "max_output_tokens": 65536,
-                            "top_p": 0.95
-                        }
-                    )
+                    model = genai.GenerativeModel('gemini-1.5-flash')
+                    response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
