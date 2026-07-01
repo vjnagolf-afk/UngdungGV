@@ -99,7 +99,7 @@ def read_uploaded_docx(uploaded_file):
         st.error(f"Lỗi khi đọc file Word: {e}")
         return ""
 
-# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUEST (HÓA GIẢI LỖI 401)
+# HÀM GỌI API GEMINI TRỰC TIẾP QUA HTTP REQUEST (ĐÃ SỬA LỖI CHỮ THÀNH STATUS_CODE)
 def call_gemini_api_direct(api_key, prompt_text):
     url = f"https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key={api_key}"
     headers = {'Content-Type': 'application/json'}
@@ -113,15 +113,16 @@ def call_gemini_api_direct(api_key, prompt_text):
         ]
     }
     
-    response = requests.post(url, headers=headers, json=payload)
-    if response.status_color == 200:
-        res_json = response.json()
-        try:
+    try:
+        response = requests.post(url, headers=headers, json=payload)
+        # ĐÃ SỬA TẠI ĐÂY: Chuyển đổi thành status_code chuẩn quy định kỹ thuật
+        if response.status_code == 200:
+            res_json = response.json()
             return res_json['candidates'][0]['content']['parts'][0]['text']
-        except Exception:
-            return f"Lỗi cấu trúc phản hồi từ AI: {response.text}"
-    else:
-        return f"Lỗi kết nối từ máy chủ Google ({response.status_code}): {response.text}"
+        else:
+            return f"Lỗi kết nối từ máy chủ Google ({response.status_code}): {response.text}"
+    except Exception as e:
+        return f"Lỗi không thể kết nối mạng: {e}"
 
 
 # 2. GIAO DIỆN NHẬP VÀ KÍCH HOẠT API KEY TRỰC TIẾP
@@ -187,7 +188,7 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 
                 ai_response = call_gemini_api_direct(api_key_input, prompt_giao_an)
                 
-                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response:
+                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response or "Lỗi không thể" in ai_response:
                     st.error(ai_response)
                 else:
                     st.success("✨ Đã tạo xong KHBD tích hợp Năng lực số & AI thành công!")
@@ -252,7 +253,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 
                 ai_response = call_gemini_api_direct(api_key_input, prompt_toan_van)
                 
-                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response:
+                if "Lỗi kết nối" in ai_response or "Lỗi cấu trúc" in ai_response or "Lỗi không thể" in ai_response:
                     st.error(ai_response)
                 else:
                     st.success(f"✨ Đã tạo xong bộ {loai_cau_hoi.lower()}!")
