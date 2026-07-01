@@ -100,7 +100,7 @@ def read_uploaded_docx(uploaded_file):
         return ""
 
 
-# LỚP GIẢ LẬP GỌI API GEMINI QUA HTTP REQUESTS
+# LỚP GIẢ LẬP GỌI API GEMINI QUA HTTP REQUESTS 
 class CustomGeminiClient:
     def __init__(self, api_key):
         self.api_key = api_key
@@ -109,6 +109,7 @@ class CustomGeminiClient:
         url = f"https://generativelanguage.googleapis.com/v1beta/{model}:generateContent?key={self.api_key}"
         headers = {'Content-Type': 'application/json'}
         
+        # Cấu hình lại phần tools định dạng JSON thô chuẩn xác cho Google Search
         api_tools = []
         for t in tools:
             if t.get('type') == 'google_search':
@@ -130,7 +131,11 @@ class CustomGeminiClient:
         response = requests.post(url, headers=headers, json=payload)
         if response.status_code == 200:
             res_json = response.json()
-            return res_json['candidates'][0]['content']['parts'][0]['text']
+            # Trích xuất dữ liệu an toàn từ cấu trúc JSON trả về
+            try:
+                return res_json['candidates'][0]['content']['parts'][0]['text']
+            except KeyError:
+                raise Exception(f"Không lấy được văn bản. Phản hồi thô từ Google: {res_json}")
         else:
             raise Exception(f"Lỗi từ máy chủ Google ({response.status_code}): {response.text}")
 
@@ -146,7 +151,7 @@ else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
 
 
-# 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR) - ĐỒNG BỘ TIẾNG VIỆT 100%
+# 3. THANH MENU ĐIỀU HƯỚNG BÊN TRÁI (SIDEBAR)
 st.sidebar.title("Chức năng hệ thống")
 chức_năng = st.sidebar.radio(
     "Chọn một công cụ dưới đây:",
@@ -207,8 +212,9 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
+                    # SỬA LỖI: Cập nhật tên định danh chính xác model sang 'models/gemini-1.5-flash-latest'
                     ai_text = client.create_interaction(
-                        model='models/gemini-1.5-flash', 
+                        model='models/gemini-1.5-flash-latest', 
                         input_text=prompt_giao_an,
                         tools=tools,
                         generation_config=generation_config
@@ -276,8 +282,9 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
+                    # SỬA LỖI: Cập nhật tên định danh chính xác model sang 'models/gemini-1.5-flash-latest'
                     ai_text = client.create_interaction(
-                        model='models/gemini-1.5-flash',
+                        model='models/gemini-1.5-flash-latest',
                         input_text=prompt_toan_van,
                         tools=tools,
                         generation_config=generation_config
