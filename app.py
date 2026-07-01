@@ -106,11 +106,11 @@ def read_uploaded_pdf(uploaded_file):
 
 
 # 2. CẤU HÌNH NHẬP MÃ API KEY TRỰC TIẾP TRÊN GIAO DIỆN BÊN TRÁI
-api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AIza...):", type="password")
+api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Bắt đầu bằng AQ... hoặc AIza...):", type="password")
 
 if api_key_input:
     genai.configure(api_key=api_key_input)
-    st.sidebar.success("🔑 Đã kết nối mã khóa API vào hệ thống!")
+    st.sidebar.success("🔑 Đã ghi nhận mã API Key của hệ thống!")
 else:
     st.sidebar.warning("⚠️ Vui lòng dán mã API Key vào ô trên để kích hoạt.")
 
@@ -124,48 +124,15 @@ chức_năng = st.sidebar.radio(
 
 # THÔNG TIN TÁC GIẢ DỰ THI
 st.sidebar.markdown("---")
-st.sidebar.subheader("✍️ Thông tin tác giả dự thi")
+st.sidebar.subheader("✍️ Thông tin dự án")
 tac_gia = st.sidebar.text_input("Họ và tên tác giả:", value="Lê Hồng Dưỡng")
 don_vi = st.sidebar.text_input("Đơn vị công tác:", value="Trường THCS Nguyễn Chí Thanh")
-
-# KHO TÀI LIỆU GỢI Ý MẪU (ĐÃ FIX: Không dùng thư viện fpdf giúp chạy mượt 100%)
-st.sidebar.markdown("---")
-st.sidebar.subheader("📁 Kho tài liệu hướng dẫn xây dựng KHBD")
-st.sidebar.info("Thầy cô có thể tải tài liệu hướng dẫn cấu trúc khung kế hoạch bài dạy mẫu 5512 dưới đây:")
-
-huong_dan_text = """HƯỚNG DẪN XÂY DỰNG KẾ HOẠCH BÀI DẠY (KHBD) CHUẨN CÔNG VĂN 5512
-1. Khung kế hoạch bài dạy phải đảm bảo đầy đủ các mục: Mục tiêu, Thiết bị dạy học và học liệu, Tiến trình dạy học.
-2. Trong mục "Tổ chức thực hiện" của mỗi Hoạt động học, bắt buộc phải trình bày cụ thể theo 4 bước bài bản:
-   - Bước 1: Chuyển giao nhiệm vụ học tập.
-   - Bước 2: Thực hiện nhiệm vụ học tập (Giáo viên theo dõi, hướng dẫn, trợ giúp).
-   - Bước 3: Báo cáo kết quả và thảo luận.
-   - Bước 4: Kết luận, nhận định (Giáo viên kiểm tra, đánh giá qua sản phẩm học tập).
-"""
-
-doc_mau_data = export_to_docx(huong_dan_text, "Hướng dẫn xây dựng KHBD chuẩn 5512", tac_gia, don_vi)
-
-col_btn1, col_btn2 = st.sidebar.columns(2)
-with col_btn1:
-    st.download_button(
-        label="📥 Bản Word (.docx)",
-        data=doc_mau_data,
-        file_name="Huong_dan_KHBD_5512.docx",
-        mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document"
-    )
-with col_btn2:
-    # Giải pháp tối ưu: Xuất file cẩm nang dạng Text tài liệu gọn nhẹ mà không lo lỗi font chữ hệ thống
-    st.download_button(
-        label="📥 Bản Cẩm nang (.txt)",
-        data=huong_dan_text,
-        file_name="Huong_dan_KHBD_5512.txt",
-        mime="text/plain"
-    )
 
 
 # 4. XỬ LÝ LOGIC HIỂN THỊ CHỨC NĂNG
 if chức_năng == "1. Thiết kế KHBD thông minh":
     st.header("📋 Công cụ thiết kế Kế hoạch bài dạy (KHBD) thông minh")
-    st.info("💡 Hệ thống đã được lập trình để tự động tích hợp lồng ghép năng lực số và giáo dục trí tuệ nhân tạo (AI) phù hợp với nội dung bài học.")
+    st.info("💡 Hệ thống đã được lập trình để luôn luôn tích hợp sẵn năng lực số và giáo dục trí tuệ nhân tạo (AI) vào tiến trình bài học của thầy.")
     
     col1, col2 = st.columns(2)
     with col1:
@@ -175,6 +142,24 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
         mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
         thoi_luong = st.text_input("Thời lượng tiết học:", placeholder="Ví dụ: 1 tiết")
         
+    # CHỨC NĂNG MỚI THEO Ý THẦY: ĐÍNH KÈM TÀI LIỆU SGK HOẶC FILE BÀI HỌC (.PDF/.DOCX)
+    st.markdown("##### 📁 Tài liệu gợi ý xây dựng KHBD (Ví dụ: File bài học trong Sách giáo khoa, tài liệu hướng dẫn)")
+    uploaded_khbd_file = st.file_uploader(
+        "Giáo viên có thể tải lên file PDF hoặc file Word chứa nội dung bài học để AI soạn bám sát tài liệu nguồn:", 
+        type=["pdf", "docx"],
+        key="khbd_uploader"
+    )
+    
+    khbd_source_content = ""
+    if uploaded_khbd_file is not None:
+        if uploaded_khbd_file.name.endswith('.docx'):
+            khbd_source_content = read_uploaded_docx(uploaded_khbd_file)
+        elif uploaded_khbd_file.name.endswith('.pdf'):
+            khbd_source_content = read_uploaded_pdf(uploaded_khbd_file)
+            
+        if khbd_source_content:
+            st.success(f"📎 Đã trích xuất và đọc tài liệu học liệu thành công: {uploaded_khbd_file.name}")
+            
     yeu_cau_them = st.text_area("Yêu cầu đặc biệt khác (nếu có):", placeholder="Ví dụ: Tập trung vào thảo luận nhóm và bài tập thực hành...")
 
     if st.button("🚀 Bắt đầu tạo KHBD"):
@@ -191,16 +176,22 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 - Khối lớp: {lop}
                 - Thời lượng: {thoi_luong}
                 - Yêu cầu bổ sung từ giáo viên: {yeu_cau_them}
+                """
                 
+                # Nếu giáo viên có tải lên tài liệu SGK/Bài học mẫu, ép AI phải đọc và bám sát tài liệu này
+                if khbd_source_content:
+                    prompt_giao_an += f"\n- BẮT BUỘC BÁM SÁT NỘI DUNG TÀI LIỆU/SGK ĐƯỢC CUNG CẤP SAU ĐÂY:\n\"\"\"{khbd_source_content}\"\"\"\n"
+                
+                prompt_giao_an += """
                 YÊU CẦU BẮT BUỘC VỀ ĐỊNH DẠNG VĂN BẢN:
                 Đầu văn bản phải ghi rõ các dòng thông tin sau theo cấu trúc (vui lòng viết hoa đúng cụm từ khóa):
                 KẾ HOẠCH BÀI DẠY
-                MÔN HỌC: {mon_hoc} - {lop}
-                BÀI HỌC: {ten_bai}
-                THỜI LƯỢNG: {thoi_luong}
+                MÔN HỌC: [Tên môn học] - [Khối lớp]
+                BÀI HỌC: [Tên bài học]
+                THỜI LƯỢNG: [Thời lượng]
 
                 YÊU CẦU BẮT BUỘC VỀ NỘI DUNG "TỔ CHỨC THỰC HIỆN":
-                Trong các hoạt động học của tiến trình dạy học, tại mục "Tổ chức thực hiện", bạn bắt buộc phải trình bày chi tiết, cụ thể các bước tổ chức hoạt động học cho học sinh theo quy định bao gồm đủ 4 bước sau:
+                Trong các hoạt động học của tiến trình dạy học, tại mục "Tổ chức thực hiện", bạn bắt buộc phải trình bày chi tiết, cụ thể các bước tổ chức hoạt động học cho học sinh từ chuyển giao nhiệm vụ; theo dõi, hướng dẫn, kiểm tra, đánh giá quá trình và kết quả thực hiện nhiệm vụ thông qua sản phẩm học tập bao gồm đủ 4 bước sau:
                 1. Chuyển giao nhiệm vụ: Nêu rõ lệnh gọi, câu hỏi, nhiệm vụ cụ thể giao cho học sinh (cá nhân/nhóm).
                 2. Thực hiện nhiệm vụ: Mô tả cụ thể hoạt động của học sinh; hoạt động theo dõi, hướng dẫn, trợ giúp và kiểm tra của giáo viên trong quá trình học sinh làm việc.
                 3. Báo cáo thảo luận: Mô tả cách thức tổ chức cho học sinh báo cáo kết quả và thảo luận tranh biện.
@@ -210,7 +201,8 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    model = genai.GenerativeModel('gemini-2.5-flash')
+                    # FIX LỖI 404: Đổi sang mô hình chuẩn nhất gemini-1.5-flash
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(prompt_giao_an)
                     
                     ai_text = response.text
@@ -232,7 +224,7 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
     st.header("📝 Hệ thống khởi tạo câu hỏi trắc nghiệm và tự luận")
     st.write("Thầy có thể dán trực tiếp nội dung hoặc đính kèm file bản Word (.docx) hoặc file PDF (.pdf) chứa tài liệu nguồn bên dưới.")
     
-    uploaded_file = st.file_uploader("📥 Đính kèm file kiến thức nguồn (Chấp nhận .docx hoặc .pdf):", type=["docx", "pdf"])
+    uploaded_file = st.file_uploader("📥 Đính kèm file kiến thức nguồn (Chấp nhận .docx hoặc .pdf):", type=["docx", "pdf"], key="bank_uploader")
     
     file_content = ""
     if uploaded_file is not None:
@@ -280,7 +272,8 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    model = genai.GenerativeModel('gemini-2.5-flash')
+                    # FIX LỖI 404: Đổi sang mô hình chuẩn nhất gemini-1.5-flash
+                    model = genai.GenerativeModel('gemini-1.5-flash')
                     response = model.generate_content(prompt_toan_van)
                     
                     ai_text = response.text
