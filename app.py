@@ -103,7 +103,7 @@ def read_uploaded_docx(uploaded_file):
 api_key_input = st.sidebar.text_input("Nhập khóa Gemini API Key của bạn (Dán mã AQ...):", type="password")
 
 if api_key_input:
-    # Cấu hình API Key thông qua thư viện cốt lộ ổn định
+    # Cấu hình API Key thông qua thư viện cốt lõi ổn định
     genai.configure(api_key=api_key_input)
     st.sidebar.success("🔑 Đã ghi nhận và cấu hình mã API Key thành công!")
 else:
@@ -160,10 +160,10 @@ if chức_năng == "1. Thiết kế KHBD thông minh":
                 """
                 
                 try:
-                    # ĐA SỬA: Khai báo chuẩn hóa công cụ Google Search cho thư viện Google AI mới
+                    # ĐÃ CẬP NHẬT: Cấu hình chuẩn hóa hoàn toàn cấu trúc google_search_retrieval
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools=['google_search']
+                        tools=[{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "DYNAMIC", "dynamic_threshold": 0.3}}}]
                     )
                     
                     response = model.generate_content(
@@ -238,10 +238,10 @@ elif chức_năng == "2. Tạo ngân hàng câu hỏi":
                 prompt_toan_van = f"{prompt_cau_hoi}\n\nTài liệu nguồn:\n\"\"\"{tai_lieu}\"\"\""
                 
                 try:
-                    # ĐA SỬA: Khai báo chuẩn hóa công cụ Google Search cho thư viện Google AI mới
+                    # ĐA CẬP NHẬT: Cấu hình chuẩn hóa hoàn toàn cấu trúc google_search_retrieval
                     model = genai.GenerativeModel(
                         model_name='gemini-1.5-flash',
-                        tools=['google_search']
+                        tools=[{"google_search_retrieval": {"dynamic_retrieval_config": {"mode": "DYNAMIC", "dynamic_threshold": 0.3}}}]
                     )
                     
                     response = model.generate_content(
