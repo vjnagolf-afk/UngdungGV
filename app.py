@@ -4,34 +4,11 @@ import json
 import os
 import pandas as pd
 import time
-# --- CÁC THƯ VIỆN KẾT NỐI GOOGLE CẦN THIẾT ---
-import gspread
-from oauth2client.service_account import ServiceAccountCredentials
-# ----------------------------------------------
 from docx import Document
 from docx.shared import Pt, Inches
 from docx.enum.text import WD_ALIGN_PARAGRAPH
 from google import genai
 from pypdf import PdfReader
-
-# Cấu hình kết nối Google Sheets
-@st.cache_resource
-def get_client():
-    # Định nghĩa scope để kết nối
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    # Nạp file key (đảm bảo file key_google.json đã nằm ở thư mục gốc)
-    creds = ServiceAccountCredentials.from_json_keyfile_name('key_google.json', scope)
-    return gspread.authorize(creds)
-
-# Khởi tạo kết nối
-try:
-    client = get_client()
-except Exception as e:
-    st.error(f"Lỗi kết nối Google: {e}")
-    st.stop()
-
-# ========================================================================
-# 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
 # ==============================================================================
 # 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
 # ==============================================================================
