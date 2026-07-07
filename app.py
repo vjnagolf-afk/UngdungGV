@@ -12,9 +12,10 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from google import genai
 from pypdf import PdfReader
 
-# Gọi hàm thiết kế đề thi từ file module đã tách
+# Gọi hàm thiết kế đề thi và quản lý điểm từ file module đã tách
 from exam_designer import render_exam_designer_section
 from grade_manager import render_grade_manager_section
+
 # ==============================================================================
 # 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
 # ==============================================================================
@@ -328,10 +329,12 @@ if phan_he_lam_viec == " Trợ lý Giảng dạy (Giáo viên)":
                     res, _ = run_ai_prompt_safe(f"Tạo tiêu chí rubric cho chủ đề {chu_de}", api_key_input)
                     st.markdown(res)
                 except Exception as error_rb: st.error(f"Lỗi: {error_rb}")
-else:
+
     elif chuc_nang_chinh == "4. Quản lý điểm học sinh (SMAS)":
         render_grade_manager_section() # GỌI HÀM VẼ GIAO DIỆN QUẢN LÝ ĐIỂM
-    # PHÂN HỆ QUẢN LÝ
+
+else:
+    # PHÂN HỆ QUẢN LÝ TỔ CHUYÊN MÔN
     if chuc_nang_chinh == "1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy":
         st.subheader("📋 HỆ THỐNG QUẢN LÝ VÀ PHÂN CÔNG CHUYÊN MÔN GIẢNG DẠY")
         tab_thanh_vien, tab_phan_cong, tab_thanh_tich = st.tabs(["👥 DANH SÁCH THÀNH VIÊN & CHUYÊN MÔN", "📅 THEO DÕI PHÂN CÔNG CHUYÊN MÔN", "📈 GHI CHÉP THÀNH TÍCH CỦA GIÁO VIÊN"])
