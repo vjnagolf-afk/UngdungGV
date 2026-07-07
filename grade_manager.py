@@ -6,7 +6,6 @@ import os
 import re
 import io
 
-# Khởi tạo CSDL SQLite như cấu trúc gốc
 DB_PATH = "teacher_assistant.db"
 
 def setup_database_structure():
@@ -27,6 +26,24 @@ def setup_database_structure():
     conn.commit()
     conn.close()
 
+def parse_score_smart(val):
+    if pd.isna(val) or str(val).strip() in ["", "nan", "None"]: 
+        return None
+    try:
+        val_str = str(val).replace(',', '.').strip()
+        if val_str in ["10", "100", "10.0"]: return 10.0
+        
+        # Nhập 95 tự thành 9.5
+        if val_str.isdigit() and len(val_str) == 2:
+            return float(val_str) / 10.0
+            
+        val_float = float(val_str)
+        if 0 <= val_float <= 10:
+            return round(val_float, 1)
+        return None
+    except:
+        return None
+
 def render_grade_manager_section():
     setup_database_structure()
     st.header("📈 HỆ THỐNG QUẢN LÝ ĐIỂM HỌC SINH (SMAS)")
@@ -35,40 +52,67 @@ def render_grade_manager_section():
     <style>
     .tip-box { background-color: #FEF3C7; color: #92400E; padding: 10px; border-radius: 5px; font-weight: bold; border: 1px solid #F59E0B; margin-bottom: 15px;}
     </style>
-    <div class="tip-box">💡 CƠ CHẾ CHẤM ĐIỂM: Thầy nhập trực tiếp điểm vào bảng phía dưới. Điểm Trung Bình Môn (TBM) sẽ được tự động tính và lưu vào cơ sở dữ liệu ngay lập tức.</div>
+    <div class="tip-box">
+    💡 CẨM NANG VÀO ĐIỂM CHUẨN WEB:<br>
+    - <b>Bước 1:</b> Dùng phím <b>Mũi tên/Tab/Enter</b> để di chuyển và gõ nhanh (VD: 95, 10, 85). Trải nghiệm sẽ mượt mà như Excel.<br>
+    - <b>Bước 2:</b> Nhập xong, thầy BẮT BUỘC bấm <b>"💾 Lưu thay đổi & Tính TBM"</b>. Hệ thống sẽ quy đổi 95 thành 9.5, tính điểm TB và lưu dữ liệu.
+    </div>
     """, unsafe_allow_html=True)
 
-    # Đọc danh sách lớp từ Database
-    conn = sqlite3.connect(DB_PATH)
-    df_classes = pd.read_sql_query("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL", conn)
-    class_list = ["Tất cả lớp"] + sorted(df_classes['classroom'].tolist())
-    conn.close()
-
-    # Thanh điều khiển phía trên
     col_filter1, col_filter2, col_import = st.columns([2, 2, 6])
+    
     with col_filter1:
         selected_grade = st.selectbox("Khối:", ["Tất cả khối", "Khối 6", "Khối 7", "Khối 8", "Khối 9"])
+
+    class_config = {
+        "6": ["6A", "6B", "6C", "6D", "6E", "6F"],
+        "7": ["7A", "7B", "7C", "7D", "7E", "7F"],
+        "8": ["8A", "8B", "8C", "8D", "8E", "8F"],
+        "9": ["9A", "9B", "9C", "9D", "9E", "9F", "9G"]
+    }
+    
+    available_classes = []
+    if selected_grade == "Tất cả khối":
+        for classes in class_config.values():
+            available_classes.extend(classes)
+    else:
+        grade_num = "".join([c for c in selected_grade if c.isdigit()])
+        if grade_num in class_config:
+            available_classes = class_config[grade_num]
+
+    try:
+        conn = sqlite3.connect(DB_PATH)
+        cursor = conn.cursor()
+        cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL")
+        db_classes = [row[0] for row in cursor.fetchall()]
+        for dc in db_classes:
+            if dc not in available_classes:
+                available_classes.append(dc)
+        conn.close()
+    except:
+        pass
+
+    final_class_list = ["Tất cả lớp"] + sorted(list(set(available_classes)))
+
     with col_filter2:
-        selected_class = st.selectbox("Lớp:", class_list)
+        selected_class = st.selectbox("Lớp:", final_class_list)
+
     with col_import:
         uploaded_smas = st.file_uploader("📥 Nhập dữ liệu SMAS (.xlsx)", type=["xlsx", "xls"], label_visibility="collapsed")
 
-    # XỬ LÝ: Nhập dữ liệu SMAS từ Excel
     if uploaded_smas:
         if st.button("🚀 Bắt đầu đồng bộ SMAS", type="primary"):
-            with st.spinner("Đang bóc tách dữ liệu..."):
+            with st.spinner("Đang bóc tách dữ liệu và hút điểm..."):
                 try:
                     excel_file = pd.ExcelFile(uploaded_smas)
                     all_sheets = excel_file.sheet_names
                     conn = sqlite3.connect(DB_PATH)
                     cursor = conn.cursor()
-
                     imported_classes = []
                     
                     for sheet_name in all_sheets:
                         if str(sheet_name).lower() == "nan": continue
                         
-                        # Quét tìm tên lớp từ các dòng đầu của Excel
                         detected_class = str(sheet_name)
                         df_head = pd.read_excel(uploaded_smas, sheet_name=sheet_name, nrows=12, header=None)
                         for r_idx, row in df_head.iterrows():
@@ -79,7 +123,6 @@ def render_grade_manager_section():
                                     detected_class = match.group(1).replace(" ", "").strip()
                                     break
 
-                        # Đọc dữ liệu điểm, bỏ qua 11 dòng tiêu đề của SMAS
                         df = pd.read_excel(uploaded_smas, sheet_name=sheet_name, skiprows=11)
                         df.columns = [str(c).strip() for c in df.columns]
                         
@@ -88,6 +131,14 @@ def render_grade_manager_section():
                         idx_ten = col_indices.get("Họ và tên")
                         
                         if idx_ma is None or idx_ten is None: continue
+                        
+                        idx_tx1 = idx_ten + 1
+                        idx_tx2 = idx_ten + 2
+                        idx_tx3 = idx_ten + 3
+                        idx_tx4 = idx_ten + 4
+                        idx_gk = col_indices.get("ĐĐG GK")
+                        idx_ck = col_indices.get("ĐĐG CK")
+                        idx_nx = col_indices.get("Nhận xét HKII") or col_indices.get("Nhận xét HKI") or col_indices.get("Nhận xét cả năm")
                             
                         has_data = False
                         for _, row in df.iterrows():
@@ -97,20 +148,37 @@ def render_grade_manager_section():
                             if not ma_hs or "STT" in ma_hs or ma_hs == "nan": continue
                             has_data = True
                             
-                            # Lưu vào DB
+                            tx1 = parse_score_smart(row.iloc[idx_tx1]) if idx_tx1 < len(row) else None
+                            tx2 = parse_score_smart(row.iloc[idx_tx2]) if idx_tx2 < len(row) else None
+                            tx3 = parse_score_smart(row.iloc[idx_tx3]) if idx_tx3 < len(row) else None
+                            tx4 = parse_score_smart(row.iloc[idx_tx4]) if idx_tx4 < len(row) else None
+                            gk = parse_score_smart(row.iloc[idx_gk]) if idx_gk is not None else None
+                            ck = parse_score_smart(row.iloc[idx_ck]) if idx_ck is not None else None
+                            nx = str(row.iloc[idx_nx]).strip() if idx_nx is not None and not pd.isna(row.iloc[idx_nx]) else None
+
+                            tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
+                            tbm = None
+                            if gk is not None and ck is not None:
+                                total_sum = sum(tx_scores) + (gk * 2) + (ck * 3)
+                                total_coef = len(tx_scores) + 2 + 3
+                                tbm = round(total_sum / total_coef, 1)
+
                             cursor.execute("INSERT OR REPLACE INTO students (student_code, fullname, classroom) VALUES (?, ?, ?)", (ma_hs, ho_ten, detected_class))
-                            cursor.execute("INSERT OR IGNORE INTO grades (student_code) VALUES (?)", (ma_hs,))
+                            cursor.execute("""
+                                INSERT OR REPLACE INTO grades (student_code, kttx1, kttx2, kttx3, kttx4, ktgk, ktck, tb, comment_hk) 
+                                VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+                            """, (ma_hs, tx1, tx2, tx3, tx4, gk, ck, tbm, nx))
                             
                         if has_data: imported_classes.append(detected_class)
 
                     conn.commit()
                     conn.close()
-                    st.success(f"✅ Đã đồng bộ thành công danh sách các lớp: {', '.join(set(imported_classes))}")
+                    if "grade_editor" in st.session_state: del st.session_state["grade_editor"]
+                    st.success(f"✅ Đã đồng bộ thành công dữ liệu và điểm của các lớp: {', '.join(set(imported_classes))}")
                     st.rerun()
                 except Exception as e:
                     st.error(f"Lỗi nhập liệu: {e}")
 
-    # Lấy dữ liệu hiển thị
     conn = sqlite3.connect(DB_PATH)
     query = """
         SELECT s.student_code as [Mã HS], s.fullname as [Họ và tên], 
@@ -135,38 +203,68 @@ def render_grade_manager_section():
     df_display = pd.read_sql_query(query, conn, params=params)
     conn.close()
 
-    # Hiển thị và Chỉnh sửa trực tiếp
     if not df_display.empty:
-        st.markdown("##### 📝 BẢNG VÀO ĐIỂM (TỰ ĐỘNG LƯU)")
+        st.markdown(f"##### 📝 BẢNG VÀO ĐIỂM LỚP {selected_class.upper()}")
         
-        # Streamlit Data Editor thay thế cho Tkinter Matrix
+        # Thêm STT
+        df_display.insert(0, "STT", range(1, len(df_display) + 1))
+        
+        # Format đẹp
+        score_cols = ["TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK"]
+        for c in score_cols:
+            df_display[c] = df_display[c].apply(lambda x: f"{float(x):.1f}" if pd.notna(x) and str(x).strip() != "" else "")
+
+        # CẤU HÌNH CỘT: Ép hẹp cột điểm, ẩn Mã HS, khóa chặt cột cố định
+        col_config = {
+            "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
+            "Mã HS": None, # ẨN HOÀN TOÀN CỘT MÃ HS
+            "Họ và tên": st.column_config.TextColumn("Họ và tên", disabled=True), # Tự động co giãn theo nội dung
+            "TX1": st.column_config.TextColumn("TX1", width="small"),
+            "TX2": st.column_config.TextColumn("TX2", width="small"),
+            "TX3": st.column_config.TextColumn("TX3", width="small"),
+            "TX4": st.column_config.TextColumn("TX4", width="small"),
+            "Điểm GK": st.column_config.TextColumn("Điểm GK", width="small"),
+            "Điểm CK": st.column_config.TextColumn("Điểm CK", width="small"),
+            "TBM HK": st.column_config.TextColumn("TBM HK", width="small", disabled=True),
+            "Nhận xét": st.column_config.TextColumn("Nhận xét", width="medium")
+        }
+        
+        # Cấu trúc hiển thị cột (Mã HS bị loại khỏi danh sách hiển thị)
+        ordered_columns = ["STT", "Họ và tên", "TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK", "Nhận xét"]
+
+        # Bảng Data Editor Cao 700px, cố định số dòng (Không cho phép Add Row)
         edited_df = st.data_editor(
             df_display,
+            column_order=ordered_columns,
             use_container_width=True,
-            num_rows="dynamic",
-            disabled=["Mã HS", "Họ và tên", "TBM HK"],
+            num_rows="fixed", # Vô hiệu hóa nút Add Row
+            column_config=col_config,
+            hide_index=True,
+            height=700,
             key="grade_editor"
         )
         
-        # Nút Lưu và Tính toán TBM
+        # NÚT LƯU THỦ CÔNG: Giúp giải quyết triệt để lỗi nhảy trỏ chuột
         col_btn1, col_btn2 = st.columns([2, 8])
         with col_btn1:
             if st.button("💾 Lưu thay đổi & Tính TBM", type="primary", use_container_width=True):
                 conn = sqlite3.connect(DB_PATH)
                 cursor = conn.cursor()
                 for _, row in edited_df.iterrows():
-                    ma_hs = row["Mã HS"]
-                    tx1, tx2, tx3, tx4 = row["TX1"], row["TX2"], row["TX3"], row["TX4"]
-                    gk, ck, nx = row["Điểm GK"], row["Điểm CK"], row["Nhận xét"]
+                    ma_hs = row["Mã HS"] # Vẫn lấy được Mã HS dù đã ẩn
                     
-                    # Thuật toán tính TBM y hệt mã nguồn gốc
-                    tx_scores = [float(x) for x in [tx1, tx2, tx3, tx4] if pd.notna(x) and str(x).strip() != ""]
-                    val_gk = float(gk) if pd.notna(gk) else None
-                    val_ck = float(ck) if pd.notna(ck) else None
+                    tx1 = parse_score_smart(row["TX1"])
+                    tx2 = parse_score_smart(row["TX2"])
+                    tx3 = parse_score_smart(row["TX3"])
+                    tx4 = parse_score_smart(row["TX4"])
+                    gk = parse_score_smart(row["Điểm GK"])
+                    ck = parse_score_smart(row["Điểm CK"])
+                    nx = row["Nhận xét"] if pd.notna(row["Nhận xét"]) else None
                     
+                    tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
                     tbm = None
-                    if val_gk is not None and val_ck is not None:
-                        total_sum = sum(tx_scores) + (val_gk * 2) + (val_ck * 3)
+                    if gk is not None and ck is not None:
+                        total_sum = sum(tx_scores) + (gk * 2) + (ck * 3)
                         total_coef = len(tx_scores) + 2 + 3
                         tbm = round(total_sum / total_coef, 1)
 
@@ -177,14 +275,25 @@ def render_grade_manager_section():
                 
                 conn.commit()
                 conn.close()
-                st.success("✅ Đã lưu và cập nhật Điểm Trung Bình thành công!")
-                st.rerun()
                 
+                # Ép xóa cache để nạp lại dữ liệu chuẩn từ CSDL
+                if "grade_editor" in st.session_state:
+                    del st.session_state["grade_editor"]
+                st.success("✅ Đã tính TBM và quy đổi định dạng điểm thành công!")
+                st.rerun()
+
+        # Nút Xuất File
         with col_btn2:
-            # Chức năng xuất file theo lớp
             output = io.BytesIO()
             with pd.ExcelWriter(output, engine='openpyxl') as writer:
-                edited_df.to_excel(writer, index=False, sheet_name=f"{selected_class}")
-            st.download_button(label="📤 Xuất File Điểm Hiện Tại", data=output.getvalue(), file_name=f"Diem_{selected_class}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet")
+                export_df = edited_df.drop(columns=["STT"]) # Bỏ STT khi xuất file SMAS
+                export_df.to_excel(writer, index=False, sheet_name=f"{selected_class}")
+            
+            st.download_button(
+                label="📤 Xuất File Điểm SMAS Hoàn Chỉnh", 
+                data=output.getvalue(), 
+                file_name=f"Diem_{selected_class}.xlsx", 
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet"
+            )
     else:
         st.info("💡 Chưa có dữ liệu học sinh. Vui lòng tải file SMAS (.xlsx) lên để đồng bộ.")
