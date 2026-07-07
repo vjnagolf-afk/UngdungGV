@@ -10,12 +10,14 @@ from docx.enum.text import WD_ALIGN_PARAGRAPH
 from google import genai
 from pypdf import PdfReader
 # Cấu hình kết nối Google Sheets
-@st.cache_resource # Lệnh này giúp ứng dụng không phải đăng nhập lại mỗi khi thầy nhấn nút
+@st.cache_resource
 def get_client():
+    # Định nghĩa scope ngay bên trong hàm để biến được nhận diện
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
     creds = ServiceAccountCredentials.from_json_keyfile_name('key_google.json', scope)
     return gspread.authorize(creds)
 
+# Gọi hàm sau khi đã định nghĩa xong
 client = get_client()
 # ==============================================================================
 # 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
