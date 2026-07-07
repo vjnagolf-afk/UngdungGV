@@ -14,7 +14,7 @@ from pypdf import PdfReader
 
 # Gọi hàm thiết kế đề thi từ file module đã tách
 from exam_designer import render_exam_designer_section
-
+from grade_manager import render_grade_manager_section
 # ==============================================================================
 # 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
 # ==============================================================================
@@ -252,7 +252,7 @@ st.sidebar.title("MENU HỆ THỐNG")
 phan_he_lam_viec = st.sidebar.radio("CHỌN PHÂN HỆ TÁC NGHIỆP", [" Trợ lý Giảng dạy (Giáo viên)", " Trợ lý Quản lý (Tổ chuyên môn)"], index=0)
 
 if phan_he_lam_viec == " Trợ lý Giảng dạy (Giáo viên)":
-    chuc_nang_chinh = st.sidebar.selectbox("CHỌN NỘI DUNG THỰC HIỆN", ["1. Thiết kế KHBD thông minh", "2. Thiết kế Đề KTĐG (Ma trận - Đặc tả)", "3. Đánh giá học sinh"])
+    chuc_nang_chinh = st.sidebar.selectbox("CHỌN NỘI DUNG THỰC HIỆN", ["1. Thiết kế KHBD thông minh", "2. Thiết kế Đề KTĐG (Ma trận - Đặc tả)", "3. Đánh giá học sinh","4. Quản lý điểm học sinh (SMAS)"])
 else:
     chuc_nang_chinh = st.sidebar.selectbox("QUẢN LÝ TỔ CHUYÊN MÔN", ["1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy", "2. Xây dựng Biên bản sinh hoạt tổ chuyên môn định kỳ", "3. Xây dựng Kế hoạch Giáo dục cá nhân (Phụ lục III - Công văn 5512)", "4. Thống kê số liệu tổ"])
 
@@ -329,6 +329,8 @@ if phan_he_lam_viec == " Trợ lý Giảng dạy (Giáo viên)":
                     st.markdown(res)
                 except Exception as error_rb: st.error(f"Lỗi: {error_rb}")
 else:
+    elif chuc_nang_chinh == "4. Quản lý điểm học sinh (SMAS)":
+        render_grade_manager_section() # GỌI HÀM VẼ GIAO DIỆN QUẢN LÝ ĐIỂM
     # PHÂN HỆ QUẢN LÝ
     if chuc_nang_chinh == "1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy":
         st.subheader("📋 HỆ THỐNG QUẢN LÝ VÀ PHÂN CÔNG CHUYÊN MÔN GIẢNG DẠY")
