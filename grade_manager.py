@@ -26,16 +26,19 @@ def setup_database_structure():
     conn.commit()
     conn.close()
 
-# Hàm xử lý điểm thông minh: Gõ 55 -> 5.5; 10 -> 10.0
+# BỘ LỌC ĐIỂM THÔNG MINH
 def parse_score_smart(val):
     if pd.isna(val) or str(val).strip() in ["", "nan", "None"]: 
         return None
     try:
         val_str = str(val).replace(',', '.').strip()
-        # Chuyển đổi tắt: gõ 55 thành 5.5, 65 thành 6.5
-        if val_str.isdigit() and len(val_str) == 2 and val_str != "10":
-            return float(val_str) / 10.0
         
+        # Xử lý các trường hợp gõ tắt
+        if val_str == "10" or val_str == "100":
+            return 10.0
+        if val_str.isdigit() and len(val_str) == 2:
+            return float(val_str) / 10.0
+            
         val_float = float(val_str)
         if 0 <= val_float <= 10:
             return round(val_float, 1)
@@ -51,7 +54,12 @@ def render_grade_manager_section():
     <style>
     .tip-box { background-color: #FEF3C7; color: #92400E; padding: 10px; border-radius: 5px; font-weight: bold; border: 1px solid #F59E0B; margin-bottom: 15px;}
     </style>
-    <div class="tip-box">💡 CƠ CHẾ CHẤM ĐIỂM SỐ: Thầy gõ nhanh (VD: 55, 65, 10). Bấm nút LƯU THAY ĐỔI hệ thống sẽ tự động format về dạng chuẩn (5.5, 6.5, 10.0) và tính luôn Điểm TBM!</div>
+    <div class="tip-box">
+    💡 HƯỚNG DẪN VÀO ĐIỂM:<br>
+    1. Thầy có thể gõ nhanh: <b>55</b> (tự thành 5.5), <b>10</b> (tự thành 10.0).<br>
+    2. Điểm TBM chỉ tự động tính khi <b>đã nhập đủ Điểm GK và Điểm CK</b>.<br>
+    3. Nhập xong, bắt buộc bấm nút <b>"💾 Lưu thay đổi & Tính TBM"</b> để hệ thống cập nhật.
+    </div>
     """, unsafe_allow_html=True)
 
     col_filter1, col_filter2, col_import = st.columns([2, 2, 6])
@@ -129,7 +137,6 @@ def render_grade_manager_section():
                         
                         if idx_ma is None or idx_ten is None: continue
                         
-                        # Xác định vị trí các cột điểm trong file SMAS
                         idx_tx1 = idx_ten + 1
                         idx_tx2 = idx_ten + 2
                         idx_tx3 = idx_ten + 3
@@ -146,7 +153,6 @@ def render_grade_manager_section():
                             if not ma_hs or "STT" in ma_hs or ma_hs == "nan": continue
                             has_data = True
                             
-                            # Hút điểm từ SMAS qua bộ lọc thông minh
                             tx1 = parse_score_smart(row.iloc[idx_tx1]) if idx_tx1 < len(row) else None
                             tx2 = parse_score_smart(row.iloc[idx_tx2]) if idx_tx2 < len(row) else None
                             tx3 = parse_score_smart(row.iloc[idx_tx3]) if idx_tx3 < len(row) else None
@@ -155,9 +161,9 @@ def render_grade_manager_section():
                             ck = parse_score_smart(row.iloc[idx_ck]) if idx_ck is not None else None
                             nx = str(row.iloc[idx_nx]).strip() if idx_nx is not None and not pd.isna(row.iloc[idx_nx]) else None
 
-                            # Tự động tính Điểm Trung Bình khi nhập SMAS
                             tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
                             tbm = None
+                            # Chỉ tính TBM khi có đủ GK và CK
                             if gk is not None and ck is not None:
                                 total_sum = sum(tx_scores) + (gk * 2) + (ck * 3)
                                 total_coef = len(tx_scores) + 2 + 3
@@ -173,6 +179,9 @@ def render_grade_manager_section():
 
                     conn.commit()
                     conn.close()
+                    # ÉP XÓA CACHE ĐỂ RENDER LẠI BẢNG TỪ ĐẦU
+                    if "grade_editor" in st.session_state:
+                        del st.session_state["grade_editor"]
                     st.success(f"✅ Đã đồng bộ thành công dữ liệu và điểm của các lớp: {', '.join(set(imported_classes))}")
                     st.rerun()
                 except Exception as e:
@@ -203,14 +212,14 @@ def render_grade_manager_section():
     df_display = pd.read_sql_query(query, conn, params=params)
     conn.close()
 
-    # HIỂN THỊ DỮ LIỆU VỚI FORMAT CHUẨN 10.0
+    # HIỂN THỊ DỮ LIỆU
     if not df_display.empty:
         st.markdown(f"##### 📝 BẢNG VÀO ĐIỂM LỚP {selected_class.upper()}")
         
-        # Format cột điểm hiển thị đẹp .1f nhưng vẫn cho sửa
+        # Format cột điểm hiển thị đẹp .1f
         score_cols = ["TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK"]
         for c in score_cols:
-            df_display[c] = df_display[c].apply(lambda x: f"{x:.1f}" if pd.notna(x) and str(x).strip() != "" else "")
+            df_display[c] = df_display[c].apply(lambda x: f"{float(x):.1f}" if pd.notna(x) and str(x).strip() != "" else "")
 
         edited_df = st.data_editor(
             df_display,
@@ -228,7 +237,6 @@ def render_grade_manager_section():
                 for _, row in edited_df.iterrows():
                     ma_hs = row["Mã HS"]
                     
-                    # Quét qua bộ lọc thông minh 55->5.5
                     tx1 = parse_score_smart(row["TX1"])
                     tx2 = parse_score_smart(row["TX2"])
                     tx3 = parse_score_smart(row["TX3"])
@@ -237,15 +245,14 @@ def render_grade_manager_section():
                     ck = parse_score_smart(row["Điểm CK"])
                     nx = row["Nhận xét"] if pd.notna(row["Nhận xét"]) else None
                     
-                    # Tính toán lại TBM
                     tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
                     tbm = None
+                    # Yêu cầu bắt buộc phải có GK và CK thì mới tính TBM
                     if gk is not None and ck is not None:
                         total_sum = sum(tx_scores) + (gk * 2) + (ck * 3)
                         total_coef = len(tx_scores) + 2 + 3
                         tbm = round(total_sum / total_coef, 1)
 
-                    # Đưa vào Database
                     cursor.execute("""
                         UPDATE grades SET kttx1=?, kttx2=?, kttx3=?, kttx4=?, ktgk=?, ktck=?, tb=?, comment_hk=? 
                         WHERE student_code=?
@@ -253,7 +260,12 @@ def render_grade_manager_section():
                 
                 conn.commit()
                 conn.close()
-                st.success("✅ Đã lưu và cập nhật Điểm Trung Bình thành công!")
+                
+                # KHÚC QUAN TRỌNG: Ép Streamlit quên dữ liệu vừa gõ sai định dạng để tải lại định dạng chuẩn từ Database
+                if "grade_editor" in st.session_state:
+                    del st.session_state["grade_editor"]
+                    
+                st.success("✅ Đã lưu và tự động quy đổi định dạng điểm thành công!")
                 st.rerun()
                 
         with col_btn2:
