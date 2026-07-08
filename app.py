@@ -8,6 +8,7 @@ from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
 from khbd_manager import render_khbd_section
 from org_manager import render_org_section, render_meeting_minutes, render_personal_plan
+from danh_gia_manager import render_assessment_section
 
 # --- 2. CẤU HÌNH ĐỌC API KEY TỰ ĐỘNG TỪ TRONG SECRETS ---
 # Thử đọc key hệ thống, nếu chưa có thì gán chuỗi rỗng
@@ -70,7 +71,8 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     elif menu == "2. Thiết kế Đề KT": 
         render_exam_designer_section("", lambda p: run_ai_prompt_safe(p))
     elif menu == "3. Đánh giá HS": 
-        st.info("💡 Tính năng Đánh giá học sinh đang được phát triển...")
+        # Gọi phân hệ thiết kế Rubric từ file danh_gia_manager.py
+        render_assessment_section(lambda p: run_ai_prompt_safe(p))
     elif menu == "4. Quản lý điểm (SMAS)": 
         render_grade_manager_section()
     elif menu == "5. Quản lý TKB": 
