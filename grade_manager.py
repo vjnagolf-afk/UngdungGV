@@ -71,6 +71,7 @@ def render_grade_manager_section():
     col_filter1, col_filter2, col_import = st.columns(3)
     
     with col_filter1:
+        # Giữ nguyên menu chọn Khối của thầy
         selected_grade = st.selectbox("Khối:", ["Tất cả khối", "Khối 6", "Khối 7", "Khối 8", "Khối 9"])
         class_config = {
             "6": ["6A", "6B", "6C", "6D", "6E", "6F"],
@@ -80,35 +81,47 @@ def render_grade_manager_section():
         }
         
     available_classes = []
+    # --- LOGIC MỚI: LỌC CHỈ HIỂN THỊ LỚP THEO KHỐI ĐƯỢC CHỌN ---
     if selected_grade == "Tất cả khối":
         for classes in class_config.values():
             available_classes.extend(classes)
+        # Quét thêm các lớp thực tế có trong Database
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL")
+            db_classes = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+            for dc in db_classes:
+                if dc not in available_classes: available_classes.append(dc)
+            conn.close()
+        except: pass
     else:
+        # Nếu chọn Khối 7, chỉ lấy các lớp bắt đầu bằng số 7 hoặc có cấu hình trong class_config["7"]
         grade_num = "".join([c for c in selected_grade if c.isdigit()])
         if grade_num in class_config:
-            available_classes = class_config[grade_num]
-            
-    try:
-        conn = sqlite3.connect(DB_PATH)
-        cursor = conn.cursor()
-        cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL")
-        db_classes = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
-        for dc in db_classes:
-            if dc not in available_classes:
-                available_classes.append(dc)
-        conn.close()
-    except:
-        pass
+            available_classes = list(class_config[grade_num])
         
-    # SỬA LỖI TYPEERROR: Ép toàn bộ tên lớp về chuỗi ký tự thô String trước khi sắp xếp
+        # Quét thêm trong DB xem có lớp nào thuộc khối này phát sinh không (ví dụ lớp 7H nhập tay)
+        try:
+            conn = sqlite3.connect(DB_PATH)
+            cursor = conn.cursor()
+            cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom LIKE ?", (f"{grade_num}%",))
+            db_classes = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
+            for dc in db_classes:
+                if dc not in available_classes: available_classes.append(dc)
+            conn.close()
+        except: pass
+        
     clean_classes = sorted(list(set([str(c).strip() for c in available_classes if c and str(c).strip() != ""])))
-    final_class_list = ["Tất cả lớp"] + clean_classes
+    
+    # Đồng bộ menu Lớp theo Khối lớp lựa chọn
+    final_class_list = ["Tất cả lớp"] + clean_classes if selected_grade == "Tất cả khối" else clean_classes
     
     with col_filter2:
         selected_class = st.selectbox("Lớp:", final_class_list)
         
     with col_import:
-        uploaded_smas = st.file_uploader("📥 Nhập dữ liệu SMAS (.xlsx)", type=["xlsx", "xls"], label_visibility="collapsed")
+        uploaded_smas = st.file_uploader(" Nhập dữ liệu SMAS (.xlsx)", type=["xlsx", "xls"], label_visibility="collapsed")
         
     if uploaded_smas:
         if st.button("🚀 Bắt đầu đồng bộ SMAS", type="secondary"):
@@ -214,12 +227,12 @@ def render_grade_manager_section():
         for c in score_cols:
             df_display[c] = df_display[c].apply(lambda x: f"{float(x):.1f}" if pd.notna(x) and str(x).strip() != "" else "")
             
-        # CO NHỎ CỘT ĐIỂM TX VÀ ẨN MÃ HỌC SINH TĂNG DIỆN TÍCH CHO HỌ TÊN
+        # --- BỐ CỤC MỚI: CO THU NHỎ ĐỘ RỘNG CỘT HỌ TÊN VÀ ĐIỂM TX VỪA KHÍT MÀN HÌNH ---
         col_config = {
             "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
-            "Mã HS": None, # Ẩn cột trên màn hình để tiết kiệm không gian
-            "Họ và tên": st.column_config.TextColumn("Họ và tên", width="large", disabled=True),
-            "TX1": st.column_config.TextColumn("TX1", width="small"),
+            "Mã HS": None, # Ẩn hoàn toàn mã học sinh
+            "Họ và tên": st.column_config.TextColumn("Họ và tên", width="medium", disabled=True), # Giảm từ large xuống medium vừa khít tên dài nhất
+            "TX1": st.column_config.TextColumn("TX1", width="small"), # Ép nhỏ diện tích cột điểm thường xuyên
             "TX2": st.column_config.TextColumn("TX2", width="small"),
             "TX3": st.column_config.TextColumn("TX3", width="small"),
             "TX4": st.column_config.TextColumn("TX4", width="small"),
@@ -229,14 +242,11 @@ def render_grade_manager_section():
             "Nhận xét": st.column_config.TextColumn("Nhận xét HK", width="medium")
         }
         
-        # BỌC BẢNG TRONG BIỂU MẪU FORM CHỐNG MẤT CON TRỎ CHUỘT
         with st.form("grade_entry_form", border=False):
-            # CHỨC NĂNG BỔ SUNG: TẠO NÚT LƯU ĐẦU BẢNG VỚI NỀN XANH
-            col_save_top, col_empty = st.columns([4, 6])
+            col_save_top, col_empty = st.columns(2)
             with col_save_top:
                 submitted_top = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TBM (Nút đầu bảng)", type="primary", use_container_width=True)
             
-            # Khung bảng dữ liệu tương tác cố định Key tĩnh
             edited_df = st.data_editor(
                 df_display,
                 column_order=["STT", "Họ và tên", "TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK", "Nhận xét"],
@@ -251,14 +261,12 @@ def render_grade_manager_section():
             st.markdown("<br>", unsafe_allow_html=True)
             submitted_bottom = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TBM (Nút cuối bảng)", type="primary", use_container_width=True)
             
-        # THỰC THI LOGIC KHI BẤM NÚT LƯU TRÊN HOẶC LƯU DƯỚI
         if submitted_top or submitted_bottom:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             for idx, row in edited_df.iterrows():
                 ma_hs = df_display.iloc[idx]["Mã HS"]
                 
-                # Thực hiện quy đổi định dạng số thông minh 88 -> 8.8
                 tx1 = parse_score_smart(row["TX1"])
                 tx2 = parse_score_smart(row["TX2"])
                 tx3 = parse_score_smart(row["TX3"])
@@ -267,7 +275,6 @@ def render_grade_manager_section():
                 ck = parse_score_smart(row["Điểm CK"])
                 nx = row["Nhận xét"] if pd.notna(row["Nhận xét"]) else None
                 
-                # Tính toán điểm TBM chính xác
                 tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
                 tbm = None
                 if gk is not None and ck is not None:
