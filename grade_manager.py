@@ -31,11 +31,8 @@ def parse_score_smart(val):
     try:
         val_str = str(val).replace(',', '.').strip()
         if val_str in ["10", "100", "10.0"]: return 10.0
-        
-        # Quy đổi điểm gõ liền thông minh (88 thành 8.8)
         if val_str.isdigit() and len(val_str) == 2:
             return float(val_str) / 10.0
-            
         val_float = float(val_str)
         if 0 <= val_float <= 10:
             return round(val_float, 1)
@@ -44,35 +41,26 @@ def parse_score_smart(val):
         return None
 def render_grade_manager_section():
     setup_database_structure()
-    st.header("📊 HỆ THỐNG QUẢN LÝ ĐIỂM HỌC SINH (SMAS)")
+    st.header("📊 HỆ THỐNG QUẢN LÝ ĐIỂM HỌC SINH TẬP TRUNG (SMAS)")
     
     st.markdown("""
     <style>
     .tip-box { background-color: #FEF3C7; color: #92400E; padding: 10px; border-radius: 5px; font-weight: bold; border: 1px solid #F59E0B; margin-bottom: 15px;}
-    
-    /* CSS Ép nút LƯU trong Bảng thành màu Xanh dương nổi bật */
     div[data-testid="stForm"] button[kind="primary"] {
-        background-color: #0284C7 !important; 
-        border-color: #0369A1 !important;
-        color: white !important;
-        font-weight: 900 !important;
-        font-size: 16px !important;
-        border-radius: 6px !important;
-        transition: all 0.3s ease !important;
+        background-color: #0284C7 !important; border-color: #0369A1 !important; color: white !important; font-weight: 900 !important; font-size: 16px !important; border-radius: 6px !important;
     }
     </style>
     <div class="tip-box">
-    🚀 CẨM NĂNG VÀO ĐIỂM SIÊU TỐC (MƯỢT NHƯ EXCEL):<br>
-    - <b>Phím mũi tên:</b> Thầy có thể thoải mái dùng các phím mũi tên <b>Lên / Xuống / Trái / Phải</b> để di chuyển giữa các ô điểm.<br>
-    - <b>Cách gõ nhanh:</b> Thầy cứ gõ điểm liên tục (ví dụ gõ 88 hoặc 8.5) rồi nhấn phím mũi tên xuống hoặc Enter. Hệ thống sẽ giữ nguyên dấu nháy chuột cố định tại bảng, không bị giật lag trang web. Sau khi nhập xong toàn bộ lớp, thầy mới nhấn nút <b>"💾 LƯU ĐIỂM & TÍNH TBM"</b> màu xanh ở cuối.
+    🚀 TÍNH NĂNG NÂNG CAO: QUẢN LÝ HÀNG LOẠT ĐA LỚP / ĐA SHEET<br>
+    - <b>Nạp dữ liệu hàng loạt:</b> File SMAS tải lên có thể chứa nhiều Sheet (mỗi lớp 1 sheet). Hệ thống sẽ tự động quét và hút điểm đồng bộ toàn bộ.<br>
+    - <b>Xuất dữ liệu hàng loạt:</b> Thầy tích chọn các lớp ở khung bên dưới để gom tất cả vào một file Excel duy nhất, tự động phân chia mỗi lớp một Sheet.
     </div>
     """, unsafe_allow_html=True)
     
     col_filter1, col_filter2, col_import = st.columns(3)
     
     with col_filter1:
-        # Giữ nguyên menu chọn Khối của thầy
-        selected_grade = st.selectbox("Khối:", ["Tất cả khối", "Khối 6", "Khối 7", "Khối 8", "Khối 9"])
+        selected_grade = st.selectbox("Khối hiển thị:", ["Tất cả khối", "Khối 6", "Khối 7", "Khối 8", "Khối 9"])
         class_config = {
             "6": ["6A", "6B", "6C", "6D", "6E", "6F"],
             "7": ["7A", "7B", "7C", "7D", "7E", "7F"],
@@ -81,11 +69,10 @@ def render_grade_manager_section():
         }
         
     available_classes = []
-    # --- LOGIC MỚI: LỌC CHỈ HIỂN THỊ LỚP THEO KHỐI ĐƯỢC CHỌN ---
+    # --- KHẮC PHỤC LỖI: QUÉT ĐẦY ĐỦ LỚP KHI CHỌN "TẤT CẢ KHỐI" ---
     if selected_grade == "Tất cả khối":
         for classes in class_config.values():
             available_classes.extend(classes)
-        # Quét thêm các lớp thực tế có trong Database
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
@@ -96,12 +83,9 @@ def render_grade_manager_section():
             conn.close()
         except: pass
     else:
-        # Nếu chọn Khối 7, chỉ lấy các lớp bắt đầu bằng số 7 hoặc có cấu hình trong class_config["7"]
         grade_num = "".join([c for c in selected_grade if c.isdigit()])
         if grade_num in class_config:
             available_classes = list(class_config[grade_num])
-        
-        # Quét thêm trong DB xem có lớp nào thuộc khối này phát sinh không (ví dụ lớp 7H nhập tay)
         try:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
@@ -113,19 +97,17 @@ def render_grade_manager_section():
         except: pass
         
     clean_classes = sorted(list(set([str(c).strip() for c in available_classes if c and str(c).strip() != ""])))
-    
-    # Đồng bộ menu Lớp theo Khối lớp lựa chọn
     final_class_list = ["Tất cả lớp"] + clean_classes if selected_grade == "Tất cả khối" else clean_classes
     
     with col_filter2:
-        selected_class = st.selectbox("Lớp:", final_class_list)
+        selected_class = st.selectbox("Lớp hiển thị nhập liệu:", final_class_list)
         
     with col_import:
-        uploaded_smas = st.file_uploader(" Nhập dữ liệu SMAS (.xlsx)", type=["xlsx", "xls"], label_visibility="collapsed")
+        uploaded_smas = st.file_uploader("📥 Nhập file SMAS đa lớp (.xlsx)", type=["xlsx", "xls"], label_visibility="collapsed")
         
     if uploaded_smas:
-        if st.button("🚀 Bắt đầu đồng bộ SMAS", type="secondary"):
-            with st.spinner("Đang bóc tách dữ liệu và hút điểm..."):
+        if st.button("🚀 Bắt đầu đồng bộ SMAS Hàng loạt", type="secondary", use_container_width=True):
+            with st.spinner("Đang bóc tách dữ liệu đa Sheet..."):
                 try:
                     excel_file = pd.ExcelFile(uploaded_smas)
                     all_sheets = excel_file.sheet_names
@@ -135,7 +117,7 @@ def render_grade_manager_section():
                     
                     for sheet_name in all_sheets:
                         if str(sheet_name).lower() == "nan": continue
-                        detected_class = str(sheet_name)
+                        detected_class = str(sheet_name).strip()
                         df_head = pd.read_excel(uploaded_smas, sheet_name=sheet_name, nrows=12, header=None)
                         for r_idx, row in df_head.iterrows():
                             for val in row:
@@ -165,7 +147,6 @@ def render_grade_manager_section():
                         for _, row in df.iterrows():
                             ma_hs = str(row.iloc[idx_ma]).strip() if not pd.isna(row.iloc[idx_ma]) else ""
                             ho_ten = str(row.iloc[idx_ten]).strip() if not pd.isna(row.iloc[idx_ten]) else ""
-                            
                             if not ma_hs or "STT" in ma_hs or ma_hs == "nan": continue
                             has_data = True
                             
@@ -180,9 +161,7 @@ def render_grade_manager_section():
                             tx_scores = [x for x in [tx1, tx2, tx3, tx4] if x is not None]
                             tbm = None
                             if gk is not None and ck is not None:
-                                total_sum = sum(tx_scores) + (gk * 2) + (ck * 3)
-                                total_coef = len(tx_scores) + 2 + 3
-                                tbm = round(total_sum / total_coef, 1)
+                                tbm = round((sum(tx_scores) + (gk * 2) + (ck * 3)) / (len(tx_scores) + 5), 1)
                                 
                             cursor.execute("INSERT OR REPLACE INTO students (student_code, fullname, classroom) VALUES (?, ?, ?)", (ma_hs, ho_ten, detected_class))
                             cursor.execute("""
@@ -193,13 +172,13 @@ def render_grade_manager_section():
                         if has_data: imported_classes.append(detected_class)
                     conn.commit()
                     conn.close()
-                    st.success(f"🎉 Đã đồng bộ thành công dữ liệu và điểm của các lớp: {', '.join(set(imported_classes))}")
+                    st.success(f"🎉 Hệ thống đã đồng bộ hàng loạt {len(set(imported_classes))} lớp: {', '.join(set(imported_classes))}")
                     st.rerun()
                 except Exception as e:
-                    st.error(f"Lỗi nhập liệu: {e}")
+                    st.error(f"Lỗi nhập liệu tệp đa sheet: {e}")
     conn = sqlite3.connect(DB_PATH)
     query = """
-    SELECT s.student_code as [Mã HS], s.fullname as [Họ và tên], 
+    SELECT s.student_code as [Mã HS], s.fullname as [Họ và tên], s.classroom as [Lớp],
            g.kttx1 as [TX1], g.kttx2 as [TX2], g.kttx3 as [TX3], g.kttx4 as [TX4],
            g.ktgk as [Điểm GK], g.ktck as [Điểm CK], g.tb as [TBM HK], g.comment_hk as [Nhận xét]
     FROM students s LEFT JOIN grades g ON s.student_code = g.student_code
@@ -217,22 +196,27 @@ def render_grade_manager_section():
     if conditions: query += " WHERE " + " AND ".join(conditions)
     query += " ORDER BY s.classroom, s.student_code ASC"
     df_display = pd.read_sql_query(query, conn, params=params)
+    
+    # Quét danh sách tất cả các lớp thực tế đang có trong DB để làm chức năng xuất file hàng loạt
+    cursor = conn.cursor()
+    cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL ORDER BY classroom ASC")
+    all_db_classes = [row[0] for row in cursor.fetchall()]
     conn.close()
     
     if not df_display.empty:
-        st.markdown(f"##### 📝 BẢNG VÀO ĐIỂM LỚP {selected_class.upper()}")
+        st.markdown(f"##### 📝 BẢNG VÀO ĐIỂM CHI TIẾT LỚP {selected_class.upper()}")
         df_display.insert(0, "STT", range(1, len(df_display) + 1))
         
         score_cols = ["TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK"]
         for c in score_cols:
             df_display[c] = df_display[c].apply(lambda x: f"{float(x):.1f}" if pd.notna(x) and str(x).strip() != "" else "")
             
-        # --- BỐ CỤC MỚI: CO THU NHỎ ĐỘ RỘNG CỘT HỌ TÊN VÀ ĐIỂM TX VỪA KHÍT MÀN HÌNH ---
         col_config = {
             "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
-            "Mã HS": None, # Ẩn hoàn toàn mã học sinh
-            "Họ và tên": st.column_config.TextColumn("Họ và tên", width="medium", disabled=True), # Giảm từ large xuống medium vừa khít tên dài nhất
-            "TX1": st.column_config.TextColumn("TX1", width="small"), # Ép nhỏ diện tích cột điểm thường xuyên
+            "Mã HS": None,
+            "Lớp": st.column_config.TextColumn("Lớp", width="small", disabled=True),
+            "Họ và tên": st.column_config.TextColumn("Họ và tên", width="medium", disabled=True),
+            "TX1": st.column_config.TextColumn("TX1", width="small"),
             "TX2": st.column_config.TextColumn("TX2", width="small"),
             "TX3": st.column_config.TextColumn("TX3", width="small"),
             "TX4": st.column_config.TextColumn("TX4", width="small"),
@@ -249,15 +233,14 @@ def render_grade_manager_section():
             
             edited_df = st.data_editor(
                 df_display,
-                column_order=["STT", "Họ và tên", "TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK", "Nhận xét"],
+                column_order=["STT", "Họ và tên", "Lớp", "TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK", "Nhận xét"],
                 use_container_width=True,
                 num_rows="fixed",
                 column_config=col_config,
                 hide_index=True,
-                height=520,
+                height=450,
                 key="stable_grade_editor" 
             )
-            
             st.markdown("<br>", unsafe_allow_html=True)
             submitted_bottom = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TBM (Nút cuối bảng)", type="primary", use_container_width=True)
             
@@ -266,7 +249,6 @@ def render_grade_manager_section():
             cursor = conn.cursor()
             for idx, row in edited_df.iterrows():
                 ma_hs = df_display.iloc[idx]["Mã HS"]
-                
                 tx1 = parse_score_smart(row["TX1"])
                 tx2 = parse_score_smart(row["TX2"])
                 tx3 = parse_score_smart(row["TX3"])
@@ -284,24 +266,42 @@ def render_grade_manager_section():
                 INSERT OR REPLACE INTO grades (student_code, kttx1, kttx2, kttx3, kttx4, ktgk, ktck, tb, comment_hk)
                 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
                 """, (ma_hs, tx1, tx2, tx3, tx4, gk, ck, tbm, nx))
-                
             conn.commit()
             conn.close()
-            st.success("🎉 Đã lưu trữ điểm, quy đổi số thập phân và cập nhật điểm TBM thành công!")
+            st.success("🎉 Đã cập nhật và lưu trữ điểm số thành công!")
             st.rerun()
             
-        output = io.BytesIO()
-        with pd.ExcelWriter(output, engine='openpyxl') as writer:
-            export_df = edited_df.drop(columns=["STT"]) 
-            export_df.insert(0, "Mã học sinh", df_display["Mã HS"])
-            export_df.to_excel(writer, index=False, sheet_name=f"{selected_class}")
-            
-        st.download_button(
-            label="📥 Xuất File Điểm SMAS Hoàn Chỉnh", 
-            data=output.getvalue(), 
-            file_name=f"Diem_{selected_class}.xlsx", 
-            mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
-            use_container_width=True
-        )
+        # ==================== TÍNH NĂNG PHÁT TRIỂN CỘNG ĐIỂM: XUẤT FILE HÀNG LOẠT ĐA SHEET ====================
+        st.markdown("---")
+        st.markdown("📦 **TRÌNH XUẤT FILE EXCEL HÀNG LOẠT (MỖI LỚP 1 SHEET):**")
+        
+        # Cho phép thầy tích chọn cùng lúc nhiều lớp muốn gom vào file Excel tải về
+        cac_lop_can_xuat = st.multiselect("Tích chọn các lớp muốn kết xuất dữ liệu:", choices=all_db_classes, default=[selected_class] if selected_class != "Tất cả lớp" else all_db_classes[:2])
+        
+        if cac_lop_can_xuat:
+            output_bulk = io.BytesIO()
+            with pd.ExcelWriter(output_bulk, engine='openpyxl') as writer:
+                conn = sqlite3.connect(DB_PATH)
+                for class_item in cac_lop_can_xuat:
+                    # Truy vấn lấy dữ liệu điểm của riêng lớp đang duyệt
+                    q_bulk = """
+                    SELECT s.student_code as [Mã học sinh], s.fullname as [Họ và tên],
+                           g.kttx1 as [TX1], g.kttx2 as [TX2], g.kttx3 as [TX3], g.kttx4 as [TX4],
+                           g.ktgk as [ĐĐG GK], g.ktck as [ĐĐG CK], g.tb as [TBM HK], g.comment_hk as [Nhận xét]
+                    FROM students s LEFT JOIN grades g ON s.student_code = g.student_code WHERE s.classroom = ?
+                    """
+                    df_bulk = pd.read_sql_query(q_bulk, conn, params=[class_item])
+                    if not df_bulk.empty:
+                        # Đẩy dữ liệu lớp vào một Sheet riêng có tên chính là tên lớp
+                        df_bulk.to_excel(writer, index=False, sheet_name=f"{class_item}")
+                conn.close()
+                
+            st.download_button(
+                label=f"📥 Tải xuống File Excel Tổng hợp ({len(cac_lop_can_xuat)} Lớp - Mỗi lớp 1 Sheet)", 
+                data=output_bulk.getvalue(), 
+                file_name=f"SMAS_Tong_Hop_BGD.xlsx", 
+                mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
+                use_container_width=True
+            )
     else:
-        st.info("ℹ️ Chưa có dữ liệu học sinh. Vui lòng tải file SMAS (.xlsx) lên để đồng bộ.")
+        st.info("ℹ️ Chưa có dữ liệu học sinh trong hệ thống. Vui lòng nạp tệp Excel SMAS (.xlsx) ở đầu trang.")
