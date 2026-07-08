@@ -243,18 +243,128 @@ def export_minutes_to_docx(row_data):
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
+
+# ==================================================================================
+# --- PHÂN HỆ: BIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN NÂNG CAO ---
+# ==================================================================================
+def setup_minutes_database():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS org_minutes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT, meeting_date TEXT, session_number TEXT UNIQUE,
+        present_members TEXT, absent_members TEXT, content_text TEXT, resolution TEXT
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+# --- HÀM TRÍCH XUẤT VĂN BẢN TỪ FILE KẾ HOẠCH TẢI LÊN ---
+def extract_text_from_minutes_upload(uploaded_file):
+    import docx
+    from pypdf import PdfReader
+    text_content = ""
+    try:
+        if uploaded_file.name.endswith('.docx'):
+            doc = docx.Document(uploaded_file)
+            for p in doc.paragraphs:
+                if p.text: text_content += p.text + "\n"
+            for t in doc.tables:
+                for r in t.rows:
+                    text_content += " | ".join([cell.text for cell in r.cells]) + "\n"
+        elif uploaded_file.name.endswith('.pdf'):
+            reader = PdfReader(uploaded_file)
+            for page in reader.pages:
+                text_content += (page.extract_text() or "") + "\n"
+        elif uploaded_file.name.endswith('.txt'):
+            text_content = uploaded_file.read().decode("utf-8")
+    except Exception as e:
+        st.error(f"Lỗi bóc tách file kế hoạch: {e}")
+    return text_content.strip()
+
+def export_minutes_to_docx(meeting_date, session_number, present_members, absent_members, content_text, resolution):
+    import docx
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    
+    doc = docx.Document()
+    for section in doc.sections:
+        section.top_margin = Inches(0.79)
+        section.bottom_margin = Inches(0.79)
+        section.left_margin = Inches(1.18)
+        section.right_margin = Inches(0.59)
+        
+    p_header = doc.add_paragraph()
+    p_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r_h1 = p_header.add_run("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n")
+    r_h1.bold = True
+    r_h1.font.name = 'Times New Roman'
+    r_h1.font.size = Pt(13)
+    
+    p_title = doc.add_paragraph()
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r_title = p_title.add_run(f"\nBIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN\n(Số: {session_number})\n")
+    r_title.bold = True
+    r_title.font.name = 'Times New Roman'
+    r_title.font.size = Pt(14)
+    r_title.font.color.rgb = RGBColor(255, 0, 0)
+    
+    items = [
+        f"- Thời gian tiến hành họp: {meeting_date}",
+        f"- Thành phần tham dự: {present_members}",
+        f"- Thành viên vắng mặt (lý do): {absent_members}",
+        "\n--- NỘI DUNG DIỄN BIẾN CUỘC HỌP ---",
+        f"{content_text}",
+        "\n--- NGHỊ QUYẾT / KẾT LUẬN CHUNG ---",
+        f"{resolution}"
+    ]
+    
+    for item in items:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        run = p.add_run(item)
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(14)
+        if "---" in item:
+            run.bold = True
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            
+    bio = io.BytesIO()
+    doc.save(bio)
+    return bio.getvalue()
 def render_meeting_minutes():
     setup_minutes_database()
-    st.markdown("<h3 style='text-align: left; color: #1E3A8A;'>📝 TRÌNH LẬP BIÊN BẢN HỌC TỔ CHUYÊN MÔN NÂNG CAO</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: left; color: #1E3A8A;'>📝 TRÌNH LẬP BIÊN BẢN HỌP TỔ CHUYÊN MÔN NÂNG CAO</h3>", unsafe_allow_html=True)
     
     tab_lap, tab_kho = st.tabs(["✍️ Lập biên bản mới", "🗄️ Kho lưu trữ biên bản họp"])
     
-    # Khởi tạo bộ nhớ tạm Session State để lưu văn bản AI sinh ra
-    if "ai_resolution_draft" not in st.session_state:
-        st.session_state["ai_resolution_draft"] = ""
+    # Khởi tạo các trạng thái bộ đệm Session State chống mất dữ liệu khi giật trang
+    if "minutes_content_draft" not in st.session_state: st.session_state["minutes_content_draft"] = ""
+    if "minutes_resolution_draft" not in st.session_state: st.session_state["minutes_resolution_draft"] = ""
 
-    # ==================== THẺ 1: LẬP BIÊN BẢN MỚI ====================
+    # ==================== THÈ 1: LẬP BIÊN BẢN MỚI ====================
     with tab_lap:
+        st.markdown("**📁 Nạp tài liệu học liệu / File kế hoạch thảo luận (Hỗ trợ chèn tự động nội dung cuộc họp):**")
+        file_ke_hoach = st.file_uploader("Kéo thả file kế hoạch tuần/tháng (.docx, .pdf, .txt) tại đây để AI tóm tắt chèn vào biên bản:", type=["docx", "pdf", "txt"], key="file_minutes_uploader")
+        
+        if file_ke_hoach:
+            if st.button("🧠 AI: Nghiên cứu file kế hoạch & Tóm tắt chèn vào diễn biến cuộc họp", type="secondary", use_container_width=True):
+                with st.spinner("Mô hình trí tuệ nhân tạo đang trích xuất văn bản và đúc kết nội dung trọng tâm chuyên môn..."):
+                    raw_plan_text = extract_text_from_minutes_upload(file_ke_hoach)
+                    if raw_plan_text:
+                        # Gọi prompt ép AI xử lý bóc tách hành vi định lượng
+                        prompt_extract = f"Bạn là Thư ký hội đồng giáo dục phổ thông cao cấp. Hãy đọc kỹ toàn bộ văn bản tệp tài liệu kế hoạch sau đây: {raw_plan_text}. Hãy viết lại thành một nội dung biên bản diễn biến cuộc họp tổ chuyên môn cực kỳ chi tiết, mạch lạc, chia rõ các mục hoạt động chính, loại bỏ toàn bộ các ký tự dấu sao sao ** đầu dòng và dùng duy nhất dấu gạch ngang '-' liệt kê."
+                        try:
+                            from app import run_ai_prompt_safe
+                            api_key_system = st.secrets.get("GEMINI_API_KEY", "")
+                            res_text, _ = run_ai_prompt_safe(prompt_extract, api_key_system)
+                            # Đổ trực tiếp dữ liệu sau xử lý vào bộ đệm của ô văn bản
+                            st.session_state["minutes_content_draft"] = res_text
+                            st.success("✅ Đã trích xuất và chèn nội dung kế hoạch thành công vào khung diễn biến bên dưới!")
+                        except Exception as e:
+                            st.error(f"Lỗi kết nối AI: {e}")
+                            st.session_state["minutes_content_draft"] = f"- Tiến hành thảo luận và thông qua tệp kế hoạch đính kèm: {file_ke_hoach.name}\n- Triển khai các công tác chỉ tiêu chuyên môn tuần mới."
+
         with st.form("form_create_minutes"):
             c1, c2 = st.columns(2)
             m_date = c1.date_input("Ngày tiến hành họp tổ:")
@@ -263,33 +373,27 @@ def render_meeting_minutes():
             m_present = st.text_area("Thành phần tham dự (Tên các thầy cô có mặt):", placeholder="Ví dụ: Thầy Dưỡng (Chủ trì), Cô Trang (Thư ký), Cô Nhi, Thầy Cường...")
             m_absent = st.text_input("Thành viên vắng mặt (Ghi rõ lý do):", placeholder="Ví dụ: Thầy Hạnh (Ốm có phép)")
             
-            st.markdown("**💬 Diễn biến cuộc họp và Ý kiến đóng góp của các thành viên:**")
-            m_content = st.text_area("Nội dung chi tiết cuộc họp:", placeholder="Ví dụ: 1. Thầy Dưỡng triển khai kế hoạch chuyên môn tuần 6; 2. Cô Trang báo cáo tiến độ vào điểm SMAS; 3. Thảo luận về phương pháp tích hợp năng lực số vào bài dạy...", height=200)
+            st.markdown("**📄 Diễn biến cuộc họp và Ý kiến đóng góp của các thành viên (Đã liên kết chèn tự động):**")
+            # Ô dữ liệu nhận biến tương tác real-time từ bộ đệm file tải lên
+            m_content = st.text_area("Nội dung chi tiết cuộc họp:", value=st.session_state["minutes_content_draft"], height=200)
             
-            # Khu vực gọi Trợ lý AI trợ giúp thư ký cô đọng nghị quyết
-            st.markdown("🤖 **Hỗ trợ từ Trợ lý AI:**")
-            col_ai_btn, _ = st.columns([1.5, 2.5])
-            with col_ai_btn:
-                # Nút gọi prompt chạy ngầm không làm lag trang
-                run_ai_btn = st.form_submit_button("🧠 Trợ lý AI: Tóm tắt Nghị quyết cuộc họp", type="secondary")
-                
-            if run_ai_btn:
+            st.markdown("🤖 **Trợ lý AI hỗ trợ đúc kết Kết luận:**")
+            if st.form_submit_button("🧠 AI: Tóm tắt Nghị quyết cuộc họp dựa trên diễn biến ở trên", type="secondary", use_container_width=True):
                 if not m_content:
-                    st.warning("⚠️ Vui lòng nhập nội dung chi tiết cuộc họp để AI làm căn cứ tóm tắt!")
+                    st.warning("⚠️ Vui lòng nhập hoặc nạp nội dung diễn biến cuộc họp trước!")
                 else:
-                    with st.spinner("AI đang nghiên cứu diễn biến cuộc họp để cô đọng kết luận quyết nghị..."):
-                        # Gọi hàm chạy prompt giấu khóa bảo mật
-                        prompt_minutes = f"Bạn là thư ký hành chính cấp cao. Hãy đọc nội dung diễn biến cuộc họp tổ chuyên môn sau đây và tóm tắt lại thành một đoạn văn ngắn gọn, xúc tích ghi rõ các Quyết nghị/Kết luận bắt buộc tổ phải thực hiện: {m_content}. Lưu ý bỏ dấu sao sao **, ghi dòng danh sách gạch ngang."
+                    with st.spinner("AI đang cô đọng nghị quyết cuộc họp..."):
+                        prompt_res = f"Hãy dựa trên văn bản diễn biến cuộc họp sau để viết ra các mục nghị quyết/kết luận chung ngắn gọn, bỏ dấu sao sao **, dùng dấu gạch ngang đầu dòng: {m_content}"
                         try:
-                            # Tận dụng hàm gọi AI dùng chung từ app.py truyền qua lambda ngầm
                             from app import run_ai_prompt_safe
                             api_key_system = st.secrets.get("GEMINI_API_KEY", "")
-                            res_ai, _ = run_ai_prompt_safe(prompt_minutes, api_key_system)
-                            st.session_state["ai_resolution_draft"] = res_ai
+                            res_ai, _ = run_ai_prompt_safe(prompt_res, api_key_system)
+                            st.session_state["minutes_resolution_draft"] = res_ai
+                            st.rerun()
                         except:
-                            st.session_state["ai_resolution_draft"] = "- Triển khai toàn diện kế hoạch dạy học tuần mới.\n- Hoàn thành hồ sơ SMAS đúng hạn quy định."
+                            st.session_state["minutes_resolution_draft"] = "- Quyết nghị thông qua 100% chỉ tiêu kế hoạch đề ra."
 
-            m_resolution = st.text_area("Nghị quyết / Kết luận cuộc họp (Thầy có thể sửa lại ý AI):", value=st.session_state["ai_resolution_draft"], height=120)
+            m_resolution = st.text_area("Nghị quyết / Kết luận cuộc họp (Thầy có thể chỉnh sửa):", value=st.session_state["minutes_resolution_draft"], height=120)
             
             st.markdown("<br>", unsafe_allow_html=True)
             save_minutes = st.form_submit_button("💾 KHÓA & LƯU BIÊN BẢN VÀO HỆ THỐNG", type="primary", use_container_width=True)
@@ -306,13 +410,12 @@ def render_meeting_minutes():
                     VALUES (?, ?, ?, ?, ?, ?)
                     """, (str(m_date), m_num.strip(), m_present.strip(), m_absent.strip(), m_content.strip(), m_resolution.strip()))
                     conn.commit()
-                    st.success(f"✅ Biên bản số **{m_num}** đã được khóa sổ và lưu vĩnh viễn vào hệ thống!")
-                    st.session_state["ai_resolution_draft"] = "" # Reset bộ đệm
+                    st.success(f" Biên bản số **{m_num}** đã được khóa sổ và lưu vĩnh viễn vào hệ thống!")
+                    st.session_state["minutes_content_draft"] = "" # Giải phóng bộ nhớ đệm
+                    st.session_state["minutes_resolution_draft"] = ""
                     st.rerun()
-                except Exception as e:
-                    st.error(f"Lỗi lưu trữ: {e}")
-                finally:
-                    conn.close()
+                except Exception as e: st.error(f"Lỗi lưu trữ: {e}")
+                finally: conn.close()
     # ==================== THÈ 2: KHO LƯU TRỮ BIÊN BẢN ====================
     with tab_kho:
         st.markdown("#### 🗄️ Thư viện lưu trữ biên bản sinh hoạt tổ")
@@ -337,9 +440,8 @@ def render_meeting_minutes():
                         st.markdown("**🏅 Quyết nghị cuộc họp:**")
                         st.write(row[6])
                         
-                        # Tích hợp xuất file Word chuẩn hành chính 
                         from org_manager import export_minutes_to_docx
-                        word_data = export_minutes_to_docx(row)
+                        word_data = export_minutes_to_docx(row[1], row[2], row[3], row[4], row[5], row[6])
                         st.download_button(
                             label="📥 Tải file Word (.docx) biên bản này",
                             data=word_data,
@@ -348,7 +450,7 @@ def render_meeting_minutes():
                             key=f"dl_word_min_{row[0]}"
                         )
                 with col_del:
-                    st.write("") # Cân dòng
+                    st.write("") 
                     if st.button("🗑️ Xóa", key=f"del_min_{row[0]}", use_container_width=True):
                         conn = sqlite3.connect(DB_PATH)
                         conn.execute("DELETE FROM org_minutes WHERE id=?", (row[0],))
@@ -356,6 +458,11 @@ def render_meeting_minutes():
                         conn.close()
                         st.success("Đã xóa biên bản!")
                         st.rerun()
+
+# --- HÀM GIỮ NGUYÊN GỌI THEO HỆ THỐNG ---
+def render_personal_plan():
+    st.header("📅 KẾ HOẠCH GIÁO DỤC CÁ NHÂN")
+
 
 # --- HÀM GIỮ NGUYÊN GỌI TỪ APP.PY ---
 def render_personal_plan():
