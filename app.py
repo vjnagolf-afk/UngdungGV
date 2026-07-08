@@ -55,10 +55,19 @@ st.title("🔰 HỆ SINH THÁI SỐ - HỖ TRỢ GIÁO VIÊN")
 st.caption("Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường THCS Nguyễn Chí Thanh - Phường Tân Lập tỉnh Đắk Lắk")
 st.markdown("---")
 
-# --- 4. BẢNG ĐIỀU KHIỂN SIDEBAR ---
-st.sidebar.markdown("## MENU HỆ THỐNG")
+## ==================================================================================
+# --- THANH ĐIỀU HƯỚNG SỬA LỖI TRÙNG ID (DÀNH CHO FILE APP.PY) ---
+# ==================================================================================
+st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
-phan_he = st.sidebar.radio("Phân hệ", ["Trợ lý Giảng dạy (Giáo viên)", "Trợ lý Quản lý (Tổ chuyên môn)"], label_visibility="collapsed")
+
+# 💥 VÁ LỖI TẬN GỐC: Ép khóa key tĩnh độc lập để ngăn chặn lỗi DuplicateWidgetID khi gọi AI ngầm
+phan_he = st.sidebar.radio(
+    "Chọn phân hệ:",
+    ["Trợ lý Giảng dạy (Giáo viên)", "Trợ lý Quản lý (Tổ chuyên môn)"],
+    label_visibility="collapsed",
+    key="app_main_sidebar_navigation_key_v1" # <-- Khóa định danh độc nhất
+)
 
 # --- 5. XỬ LÝ ĐIỀU HƯỚNG ---
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
