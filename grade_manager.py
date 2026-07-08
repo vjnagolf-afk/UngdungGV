@@ -92,7 +92,7 @@ def render_grade_manager_section():
         conn = sqlite3.connect(DB_PATH)
         cursor = conn.cursor()
         cursor.execute("SELECT DISTINCT classroom FROM students WHERE classroom IS NOT NULL")
-        db_classes = [row for row in cursor.fetchall()]
+        db_classes = [str(row[0]) for row in cursor.fetchall() if row[0] is not None]
         for dc in db_classes:
             if dc not in available_classes:
                 available_classes.append(dc)
@@ -100,7 +100,10 @@ def render_grade_manager_section():
     except:
         pass
         
-    final_class_list = ["Tất cả lớp"] + sorted(list(set(available_classes)))
+    # SỬA LỖI TYPEERROR: Ép toàn bộ tên lớp về chuỗi ký tự thô String trước khi sắp xếp
+    clean_classes = sorted(list(set([str(c).strip() for c in available_classes if c and str(c).strip() != ""])))
+    final_class_list = ["Tất cả lớp"] + clean_classes
+    
     with col_filter2:
         selected_class = st.selectbox("Lớp:", final_class_list)
         
