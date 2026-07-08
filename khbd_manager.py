@@ -25,8 +25,7 @@ def extract_text_from_files(uploaded_files):
 
 # --- GIAO DIỆN CHÍNH CỦA PHÂN HỆ ---
 def render_khbd_section(run_ai_prompt_safe_func):
-    st.markdown("<h3 style='text-align: center; color: red;'>📖 CHỨC NĂNG SOẠN GIÁO ÁN AI THEO MẪU KHÁCH</h3>", unsafe_allow_index=True)
-    
+    st.markdown("<h3 style='text-align: center; color: red;'>📖 CHỨC NĂNG SOẠN GIÁO ÁN AI THEO MẪU KHÁCH</h3>", unsafe_allow_html=True)
     # --- DÒNG 1: NHẬP TÊN BÀI DẠY ---
     ten_bai = st.text_input("Tên bài dạy / Chủ đề:", key="khbd_ten_bai")
     
