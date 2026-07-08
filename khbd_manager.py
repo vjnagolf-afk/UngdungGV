@@ -2,6 +2,7 @@ import streamlit as st
 import docx  
 from docx.shared import Inches, Pt
 import io
+import re  # <-- THÊM THƯ VIỆN NÀY ĐỂ SỬA LỖI NAMEEROR
 from pypdf import PdfReader
 
 # --- HÀM TRÍCH XUẤT VĂN BẢN VÀ HÌNH ẢNH TỪ FILE NGUỒN ---
@@ -65,7 +66,7 @@ def export_khbd_to_docx(markdown_content, images_list):
         else:
             if in_table and table_data:
                 num_rows = len(table_data)
-                num_cols = len(table_data[0]) if num_rows > 0 else 0
+                num_cols = len(table_data) if num_rows > 0 else 0
                 if num_cols > 0:
                     word_table = doc.add_table(rows=num_rows, cols=num_cols)
                     word_table.style = 'Table Grid'
@@ -86,7 +87,7 @@ def export_khbd_to_docx(markdown_content, images_list):
             # Tự động chèn lại hình ảnh minh họa từ kho lưu trữ nhị phân
             if "[Hình ảnh minh họa]" in line and images_list:
                 try:
-                    img_stream = io.BytesIO(images_list[0])
+                    img_stream = io.BytesIO(images_list[0]) # Lấy ảnh đầu tiên trong kho nạp
                     doc.add_picture(img_stream, width=Inches(4.5))
                 except:
                     p = doc.add_paragraph(line)
@@ -98,7 +99,7 @@ def export_khbd_to_docx(markdown_content, images_list):
                 parts = re.split(r'(\d+)', line)
                 for part in parts:
                     run = p.add_run(part)
-                    if part.isdigit() and any(x in line for x in ['H2O', 'CO2', 'Fe', 'O2', 'H2SO4', 'N2']):
+                    if part.isdigit() and any(x in line for x in ['H2O', 'CO2', 'Fe', 'O2', 'H2SO4', 'N2', 'CH4', 'C2H5OH']):
                         run.font.subscript = True
 
     bio = io.BytesIO()
