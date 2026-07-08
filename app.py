@@ -335,118 +335,26 @@ if phan_he_lam_viec == " Trợ lý Giảng dạy (Giáo viên)":
 
 else:
     # PHÂN HỆ QUẢN LÝ TỔ CHUYÊN MÔN
-    if chuc_nang_chinh == "1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy":
-        st.subheader("📋 HỆ THỐNG QUẢN LÝ VÀ PHÂN CÔNG CHUYÊN MÔN GIẢNG DẠY")
-        tab_thanh_vien, tab_phan_cong, tab_thanh_tich = st.tabs(["👥 DANH SÁCH THÀNH VIÊN & CHUYÊN MÔN", "📅 THEO DÕI PHÂN CÔNG CHUYÊN MÔN", "📈 GHI CHÉP THÀNH TÍCH CỦA GIÁO VIÊN"])
-        
-        with tab_thanh_vien:
-            df_thanh_vien = pd.DataFrame(st.session_state["db_thanh_vien"])
-            df_tv_edited = st.data_editor(df_thanh_vien, num_rows="dynamic" if st.session_state["is_admin_verified"] else "fixed", disabled=not st.session_state["is_admin_verified"], use_container_width=True)
-            if st.session_state["is_admin_verified"] and st.button("💾 Lưu cập nhật Danh sách"):
-                st.session_state["db_thanh_vien"] = df_tv_edited.to_dict('records')
-                save_data_to_local_file(FILE_THANH_VIEN, st.session_state["db_thanh_vien"])
-                sync_sub_databases() 
-                st.success("✅ Đã cập nhật!")
-                st.rerun()
+    # Đảm bảo toàn bộ các dòng elif này nằm thẳng hàng (cùng mức thụt lề)
+if chuc_nang_chinh == "1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy":
+    st.subheader("📋 HỆ THỐNG QUẢN LÝ VÀ PHÂN CÔNG CHUYÊN MÔN GIẢNG DẠY")
+    # ... (Các tab của thầy)
 
-        with tab_phan_cong:
-            df_pc_current = pd.DataFrame(st.session_state["db_phan_cong_hien_tai"])
-            df_pc_edited = st.data_editor(df_pc_current, num_rows="fixed", disabled=not st.session_state["is_admin_verified"], use_container_width=True)
-            if st.session_state["is_admin_verified"] and st.button("💾 Lưu Phân công"):
-                st.session_state["db_phan_cong_hien_tai"] = df_pc_edited.to_dict('records')
-                st.success("✅ Đã lưu!")
-                st.rerun()
+elif chuc_nang_chinh == "2. Xây dựng Biên bản sinh hoạt tổ chuyên môn định kỳ":
+    st.subheader("📝 XÂY DỰNG BIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN")
+    # ... (Các code của thầy)
 
-        with tab_thanh_tich:
-            nam_hoc_selected = st.selectbox("📅 CHỌN NĂM HỌC QUẢN LÝ:", DANH_SACH_NAM_HOC, index=5)
-            if nam_hoc_selected not in st.session_state["db_thanh_tich_da_nam"] or not st.session_state["db_thanh_tich_da_nam"][nam_hoc_selected]:
-                st.session_state["db_thanh_tich_da_nam"][nam_hoc_selected] = [{"Năm học": nam_hoc_selected, "Họ và tên": tv["Họ và tên"], "Đánh giá viên chức": "Hoàn thành tốt (HTT)", "Kết quả BD HSG": "Không", "Kết quả NCKH": "Không", "Kết quả STEM": "Không", "Kết quả Sáng kiến": "Không", "Thi GVDG": "Không", "Thi GVCNG": "Không", "Kết quả TDTT": "Không", "Kết quả VN": "Không", "Hiến máu nhân đạo": "Không", "Hoạt động khác": "Không"} for tv in st.session_state["db_thanh_vien"]]
-            
-            list_tt_data = st.session_state["db_thanh_tich_da_nam"][nam_hoc_selected]
-            for row in list_tt_data: row["Năm học"] = nam_hoc_selected
-            df_tt_current = pd.DataFrame(list_tt_data)
-            df_tt_edited = st.data_editor(df_tt_current, num_rows="dynamic" if st.session_state["is_admin_verified"] else "fixed", disabled=not st.session_state["is_admin_verified"], use_container_width=True)
-            
-            if st.session_state["is_admin_verified"]:
-                col_save_tt, col_ex_tt = st.columns(2)
-                with col_save_tt:
-                    if st.button(f"💾 Lưu dữ liệu năm {nam_hoc_selected}"):
-                        saved_records = df_tt_edited.to_dict('records')
-                        for record in saved_records: record["Năm học"] = nam_hoc_selected
-                        st.session_state["db_thanh_tich_da_nam"][nam_hoc_selected] = saved_records
-                        save_data_to_local_file(FILE_THANH_TICH, st.session_state["db_thanh_tich_da_nam"]) 
-                        st.success("✅ Đã lưu!")
-                        st.rerun()
-                with col_ex_tt:
-                    st.download_button(label=f"📥 Tải Bảng thi đua (.xlsx)", data=convert_df_to_excel_bytes(df_tt_current), file_name=f"Thi_Dua_{nam_hoc_selected.replace(' - ', '_')}.xlsx")
+elif chuc_nang_chinh == "3. Xây dựng Kế hoạch Giáo dục cá nhân (Phụ lục III - Công văn 5512)":
+    st.header("📋 KẾ HOẠCH GIÁO DỤC CÁ NHÂN CỦA GIÁO VIÊN (Phụ lục III)")
+    # ... (Các code của thầy)
 
-    elif chuc_nang_chinh == "2. Xây dựng Biên bản sinh hoạt tổ chuyên môn định kỳ":
-        st.subheader("📝 XÂY DỰNG BIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN")
-        st.markdown("#### I. THỜI GIAN, ĐỊA ĐIỂM, THÀNH PHẦN HOẠT ĐỘNG")
-        col_t1, col_t2, col_t3 = st.columns(3)
-        with col_t1:
-            ky_hop_so = st.text_input("Kỳ họp thứ:", value="05")
-            thang_hop_so = st.text_input("Biên bản họp tháng:", value="01")
-            nam_hoc_chuoi = st.text_input("Năm học trường đăng ký:", value="2025 - 2026")
-        with col_t2:
-            gio_phut_hop = st.text_input("Vào lúc mấy giờ mấy phút:", value="13 giờ 30 phút")
-            ngay_thang_hop = st.text_input("Ngày/Tháng/Năm cuộc họp diễn ra:", value="17/01/2026")
-            phong_hop = st.text_input("Địa điểm tại phòng học:", value="Hội trường")
-        with col_t3:
-            chu_tri_cuoc = st.text_input("Chủ trì cuộc họp (Chủ tọa):", value="Thầy Lê Hồng Dưỡng – Tổ trưởng")
-            thu_ky_cuoc = st.text_input("Thư ký lập biên bản:", value="Cô Nguyễn Thị Bình")
-            thanh_phan_co = st.text_input("Thành phần (Có mặt / Vắng mặt):", value="Có mặt: 10/10; Vắng mặt: 0")
+elif chuc_nang_chinh == "4. Thống kê số liệu tổ":
+    st.header("📊 THỐNG KÊ GIÁO VIÊN TỔ")
+    tong_nhan_su = len(st.session_state["db_thanh_vien"])
+    st.metric("Tổng số thành viên tổ", f"{tong_nhan_su} Giáo viên")
+    df_tv_current = pd.DataFrame(st.session_state["db_thanh_vien"])
+    if "Phân môn chính" in df_tv_current.columns:
+        st.bar_chart(df_tv_current["Phân môn chính"].value_counts())
 
-        st.markdown("---")
-        st.markdown("#### II. NỘI DUNG CUỘC HỌP & NẠP KẾ HOẠCH NGUỒN")
-        uploaded_kh_thang = st.file_uploader("📥 Tải file Kế hoạch tháng làm căn cứ biên bản (.pdf, .docx):", type=["pdf", "docx"], key="up_kh_thang")
-        content_kh_thang = ""
-        if uploaded_kh_thang:
-            content_kh_thang = read_uploaded_docx(uploaded_kh_thang) if uploaded_kh_thang.name.endswith('.docx') else read_uploaded_pdf(uploaded_kh_thang)
-            st.success("✅ Đã nạp thành công kế hoạch tháng vào bộ nhớ trợ lý ảo.")
-
-        col_m1, col_m2, col_m3 = st.columns(3)
-        with col_m1:
-            bo_sung_11 = st.text_area("Ghi chú bổ sung mục 1.1 (Công tác trọng tâm):", placeholder="Nhập thêm lưu ý nếu có...")
-        with col_m2:
-            bo_sung_12 = st.text_area("Ghi chú bổ sung mục 1.2 (Thảo luận chuyên môn):", placeholder="Nhập lưu ý phương pháp, chuyên đề STEM...")
-        with col_m3:
-            bo_sung_13 = st.text_area("Ghi chú bổ sung mục 1.3 (Công tác khác):", placeholder="Nhập việc phong trào, công đoàn...")
-
-        y_kien_dong_gop = st.text_area("Mục 2. Ý kiến đóng góp của các thành viên tổ chuyên môn:", value="- Các thành viên thảo luận sôi nổi và hoàn toàn nhất trí với phương hướng phân bổ chuyên môn tháng này.")
-
-        if st.button("🤖 AI Tự động soạn thảo Biên bản"):
-            if not uploaded_kh_thang: st.warning("⚠️ Thầy cần đính kèm file Kế hoạch tháng lên trước!")
-            else:
-                with st.spinner("AI đang dựng biên bản hành chính..."):
-                    try:
-                        prompt_bb = f"Hãy đóng vai thư ký tổ chuyên môn trường THCS Nguyễn Chí Thanh. Dựa vào nội dung file kế hoạch: {content_kh_thang}, soạn thảo nội dung phần II. NỘI DUNG CUỘC HỌP bóc tách lắp vào mục 1.1, 1.2, 1.3 phát triển chi tiết."
-                        res_ai, _ = run_ai_prompt_safe(prompt_bb, api_key_input)
-                        full_bien_ban_text = f"BIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN\nKỲ HỌP THỨ {ky_hop_so} THÁNG {thang_hop_so}\n\nI. THỜI GIAN, ĐỊA ĐIỂM\nLúc {gio_phut_hop}, ngày {ngay_thang_hop} tại {phong_hop}\nChủ trì: {chu_tri_cuoc}, Thư ký: {thu_ky_cuoc}, Thành phần: {thanh_phan_co}\n\nII. NỘI DUNG CUỘC HỌP\n{res_ai}\n\n2. Ý KIẾN ĐÓNG GÓP\n{y_kien_dong_gop}"
-                        st.markdown(full_bien_ban_text)
-                        st.download_button("📥 Xuất văn bản biên bản Word (.docx)", data=export_to_docx_vietnam_standard(full_bien_ban_text, f"Bien_ban_thang_{thang_hop_so}"), file_name=f"Bien_ban_thang_{thang_hop_so}.docx")
-                    except Exception as e: st.error(f"Lỗi: {e}")
-
-    elif chuc_nang_chinh == "3. Xây dựng Kế hoạch Giáo dục cá nhân (Phụ lục III - Công văn 5512)":
-        st.header("📋 KẾ HOẠCH GIÁO DỤC CÁ NHÂN CỦA GIÁO VIÊN (Phụ lục III)")
-        gv_selected = st.selectbox("Chọn Giáo viên cần lập kế hoạch:", [x["Họ và tên"] for x in st.session_state["db_thanh_vien"]])
-        mon_tu_dong = next((x["Phân môn chính"] for x in st.session_state["db_thanh_vien"] if x["Họ và tên"] == gv_selected), "")
-        st.info(f"Phân môn giảng dạy: **{mon_tu_dong}**")
-        if st.button("🪄 AI Thiết kế Phụ lục III chuẩn 5512"):
-            with st.spinner("AI đang xử lý..."):
-                try:
-                    res, _ = run_ai_prompt_safe(f"Thiết kế khung kế hoạch giáo dục cá nhân phụ lục III 5512 cho môn {mon_tu_dong}", api_key_input)
-                    st.markdown(res)
-                    st.download_button("📥 Tải Phụ lục III Word (.docx)", data=export_to_docx_vietnam_standard(res, f"Phu_luc_III_{gv_selected}"), file_name=f"Phu_luc_III_{gv_selected}.docx")
-                except Exception as e: st.error(f"Lỗi: {e}")
-
-   elif chuc_nang_chinh == "4. Thống kê số liệu tổ":
-        st.header("📊 THỐNG KÊ GIÁO VIÊN TỔ")
-        tong_nhan_su = len(st.session_state["db_thanh_vien"])
-        st.metric("Tổng số thành viên tổ", f"{tong_nhan_su} Giáo viên")
-        df_tv_current = pd.DataFrame(st.session_state["db_thanh_vien"])
-        if "Phân môn chính" in df_tv_current.columns:
-            st.bar_chart(df_tv_current["Phân môn chính"].value_counts())
-
-    elif chuc_nang_chinh == "5. Quản lý Thời khóa biểu":
-        render_timetable_section()  # Dòng này phải thụt vào trong như trên
+elif chuc_nang_chinh == "5. Quản lý Thời khóa biểu":
+    render_timetable_section()
