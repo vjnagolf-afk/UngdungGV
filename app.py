@@ -2,18 +2,16 @@ import streamlit as st
 import pandas as pd
 from google import genai
 
-# --- 1. IMPORT CÁC MODULE ---
+# --- 1. PHÂN LUỒNG IMPORT CÁC MODULE ĐỘC LẬP (ĐÃ KHỬ TRÙNG LẶP) ---
 from exam_designer import render_exam_designer_section
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
 from khbd_manager import render_khbd_section
 from danh_gia_manager import render_assessment_section
-from org_manager import render_org_section, render_personal_plan
-from bien_ban_manager import render_meeting_minutes
+
 from org_manager import render_org_section
 from bien_ban_manager import render_meeting_minutes
-from ke_hoach_ca_nhan_manager import render_personal_plan # <-- Gọi từ file độc lập mới tạo
-
+from ke_hoach_ca_nhan_manager import render_personal_plan 
 
 # --- 2. CẤU HÌNH ĐỌC API KEY TỰ ĐỘNG TỪ TRONG SECRETS ---
 # Thử đọc key hệ thống, nếu chưa có thì gán chuỗi rỗng
