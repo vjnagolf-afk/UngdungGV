@@ -184,7 +184,7 @@ def render_grade_manager_section():
                     st.rerun()
                 except Exception as e:
                     st.error(f"Lỗi nhập liệu: {e}")
-        conn = sqlite3.connect(DB_PATH)
+    conn = sqlite3.connect(DB_PATH)
     query = """
     SELECT s.student_code as [Mã HS], s.fullname as [Họ và tên], 
            g.kttx1 as [TX1], g.kttx2 as [TX2], g.kttx3 as [TX3], g.kttx4 as [TX4],
@@ -298,4 +298,3 @@ def render_grade_manager_section():
         )
     else:
         st.info("ℹ️ Chưa có dữ liệu học sinh. Vui lòng tải file SMAS (.xlsx) lên để đồng bộ.")
-
