@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 import re
-import io  # <-- ĐÃ THÊM THƯ VIỆN NÀY ĐỂ SỬA TRIỆT ĐỂ LỖI ĐỊNH NGHĨA 'IO'
+import io
 
 def render_tkb_manager():
     st.header("📅 QUẢN LÝ THỜI KHÓA BIỂU")
@@ -45,21 +45,22 @@ def render_tkb_manager():
                             teacher_name = parts[1].strip()
                             if teacher_name: all_teachers.add(teacher_name)
                             
-            # --- ĐIỀU HƯỚNG GIAO DIỆN TABS ---
+            # --- KHỞI TẠO ĐIỀU HƯỚNG GIAO DIỆN TABS ---
             tab1, tab2 = st.tabs(["📊 Thời khóa biểu chung", "👤 TKB theo giáo viên"])
             
+            # --- THÀNH PHẦN TAB 1: CHỈ CHỨA DUY NHẤT BẢNG TỔNG (ĐÃ ÉP THỤT LỀ WITH CHUẨN) ---
             with tab1:
                 st.markdown("##### 📋 Bảng xem trước Thời khóa biểu toàn trường")
                 st.dataframe(df, use_container_width=True, hide_index=True)
                 
+            # --- THÀNH PHẦN TAB 2: ĐỘC LẬP HOÀN TOÀN KHÔNG BỊ TRÙNG LẶP ---
             with tab2:
-                # 💡 ĐÃ LOẠI BỎ TOÀN BỘ BẢNG XEM CHUNG KHÔNG CÒN NHẮC LẠI Ở ĐÂY
                 if not all_teachers:
                     st.error("Không tìm thấy thông tin giáo viên bộ môn trong phân phối lịch dạy. Vui lòng kiểm tra lại file.")
                 else:
                     selected_teacher = st.selectbox("👤 Chọn tên Giáo viên cần xem thời khóa biểu cá nhân:", sorted(list(all_teachers)))
                     
-                    # --- THUẬT TOÁN DỰNG LƯỚI TKB MA TRẬN 5 TIẾT x 6 THỨ (GIỐNG ẢNH MẪU) ---
+                    # --- THUẬT TOÁN DỰNG LƯỚI TKB MA TRẬN 5 TIẾT x 6 THỨ ---
                     days_list = ["Thứ 2", "Thứ 3", "Thứ 4", "Thứ 5", "Thứ 6", "Thứ 7"]
                     slots_list = ["1", "2", "3", "4", "5"]
                     
@@ -93,7 +94,7 @@ def render_tkb_manager():
                                         sub_name = parts[0].strip()
                                         class_short = col_class.split("(")[0].strip()
                                         
-                                        # Gom lại thành chuỗi 'Môn - Lớp' (Ví dụ: T.Anh - 9E) đúng như ảnh mẫu của thầy Bình
+                                        # Gom lại thành chuỗi 'Môn - Lớp' (Ví dụ: T.Anh - 9E)
                                         cell_lessons.append(f"{sub_name} - {class_short}")
                             
                             if cell_lessons:
@@ -109,10 +110,12 @@ def render_tkb_manager():
                     output_personal = io.BytesIO()
                     with pd.ExcelWriter(output_personal, engine='openpyxl') as writer:
                         df_matrix.to_excel(writer, index=False, sheet_name=f"TKB_{selected_teacher}")
+                    
+                    st.write("") 
                     st.download_button(
-                        label=f"📥 Tải lịch dạy Thầy/Cô {selected_teacher} (.xlsx)",
+                        label=" Tải lịch dạy Thầy/Cô {} (.xlsx)".format(selected_teacher),
                         data=output_personal.getvalue(),
-                        file_name=f"TKB_{selected_teacher}.xlsx",
+                        file_name="TKB_{}.xlsx".format(selected_teacher),
                         mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet",
                         use_container_width=True
                     )
