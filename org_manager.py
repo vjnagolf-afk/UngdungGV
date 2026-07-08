@@ -168,7 +168,81 @@ def render_org_section():
         else: st.info(f"ℹ️ Chưa có dữ liệu lưu trữ thi đua cho **{selected_year}**.")
 
 # --- CÁC HÀM VỆ TINH ---
-def render_meeting_minutes():
-    st.header("📝 BIÊN BẢN SINH HOẠT TỔ")
+# ==================================================================================
+# --- PHÂN HỆ: BIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN NÂNG CAO ---
+# ==================================================================================
+def setup_minutes_database():
+    conn = sqlite3.connect(DB_PATH)
+    cursor = conn.cursor()
+    # Tạo bảng lưu trữ biên bản cuộc họp vĩnh viễn
+    cursor.execute("""
+    CREATE TABLE IF NOT EXISTS org_minutes (
+        id INTEGER PRIMARY KEY AUTOINCREMENT,
+        meeting_date TEXT,
+        session_number TEXT UNIQUE,
+        present_members TEXT,
+        absent_members TEXT,
+        content_text TEXT,
+        resolution TEXT
+    )
+    """)
+    conn.commit()
+    conn.close()
+
+def export_minutes_to_docx(row_data):
+    import docx
+    from docx.shared import Inches, Pt, RGBColor
+    from docx.enum.text import WD_ALIGN_PARAGRAPH
+    
+    doc = docx.Document()
+    # Định dạng lề trang chuẩn hành chính Việt Nam (Top: 2cm, Bottom: 2cm, Left: 3cm, Right: 1.5cm)
+    for section in doc.sections:
+        section.top_margin = Inches(0.79)
+        section.bottom_margin = Inches(0.79)
+        section.left_margin = Inches(1.18)
+        section.right_margin = Inches(0.59)
+        
+    # Tiêu ngữ quốc hiệu căn giữa
+    p_header = doc.add_paragraph()
+    p_header.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r_h1 = p_header.add_run("CỘNG HÒA XÃ HỘI CHỦ NGHĨA VIỆT NAM\nĐộc lập - Tự do - Hạnh phúc\n")
+    r_h1.bold = True
+    r_h1.font.name = 'Times New Roman'
+    r_h1.font.size = Pt(13)
+    
+    # Tiêu đề biên bản chữ đỏ căn giữa
+    p_title = doc.add_paragraph()
+    p_title.alignment = WD_ALIGN_PARAGRAPH.CENTER
+    r_title = p_title.add_run(f"\nBIÊN BẢN SINH HOẠT TỔ CHUYÊN MÔN\n(Số: {row_data[2]})\n")
+    r_title.bold = True
+    r_title.font.name = 'Times New Roman'
+    r_title.font.size = Pt(14)
+    r_title.font.color.rgb = RGBColor(255, 0, 0)
+    
+    # Nội dung biên bản căn đều 2 bên, cỡ chữ 14
+    items = [
+        f"- Thời gian tiến hành họp: {row_data[1]}",
+        f"- Thành phần tham dự: {row_data[3]}",
+        f"- Thành viên vắng mặt (lý do): {row_data[4]}",
+        "\n--- NỘI DUNG DIỄN BIẾN CUỘC HỌP ---",
+        f"{row_data[5]}",
+        "\n--- NGHỊ QUYẾT / KẾT LUẬN CHUNG ---",
+        f"{row_data[6]}"
+    ]
+    
+    for item in items:
+        p = doc.add_paragraph()
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+        run = p.add_run(item)
+        run.font.name = 'Times New Roman'
+        run.font.size = Pt(14)
+        if "---" in item:
+            run.bold = True
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            
+    bio = io.BytesIO()
+    doc.save(bio)
+    return bio.getvalue()
+
 def render_personal_plan():
     st.header("📅 KẾ HOẠCH GIÁO DỤC CÁ NHÂN")
