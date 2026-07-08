@@ -53,11 +53,11 @@ def setup_org_database():
             ("Phạm Thùy Ngoan", "Tổ viên", "KHTN (Hóa)", "", "", ""),
             ("Huỳnh Thị Kim Lý", "Tổ viên", "KHTN", "", "", ""),
             ("Nguyễn Thanh Mai", "Tổ viên", "KHTN", "", "", ""),
-            ("Phạm Thị Minh Anh", "Tổ viên", "KHTN", "", "", "")
+            ("Phạm Thị Minh Anh", "Tổ viên", "KHTN", "", "", ")
         ]
         for row in danh_sach_goc:
             cursor.execute("INSERT OR IGNORE INTO org_members (fullname, position, main_subject, email, phone, note) VALUES (?, ?, ?, ?, ?, ?)", row)
-            cursor.execute("INSERT OR IGNORE INTO org_assignments (fullname, subject_class, homeroom, concurrent, total_periods) VALUES (?, '-', '-', '-', '0')", (row[0],))
+            cursor.execute("INSERT OR IGNORE INTO org_assignments (fullname, subject_class, homeroom, concurrent, total_periods) VALUES (?, '-', '-', '-', '0')", (row,))
             
     conn.commit()
     conn.close()
@@ -109,7 +109,6 @@ def render_org_section():
         df_members = pd.read_sql_query("SELECT fullname as [Họ và tên], position as [Chức vụ], main_subject as [Phân môn chính], email as [Email], phone as [Số điện thoại], note as [Ghi chú] FROM org_members", conn)
         conn.close()
 
-        # Khử chữ nan sang dấu gạch ngang sạch sẽ
         df_members = df_members.fillna("-")
         for col in df_members.columns:
             df_members[col] = df_members[col].apply(lambda x: "-" if str(x).strip().lower() in ["nan", "none", ""] else str(x).strip())
@@ -117,18 +116,17 @@ def render_org_section():
         if not df_members.empty:
             df_members.insert(0, "STT", range(1, len(df_members) + 1))
             
-            # 💥 CẤU HÌNH ĐỘ RỘNG MỚI: CO THU NHỎ CÁC CỘT VỪA KHÍT NỘI DUNG Ở THẺ 1
+            # 💥 SỬA ĐỔI: Sử dụng kích thước pixel cứng (width=) để ép co thu nhỏ cột vừa khít
             col_cfg_members = {
-                "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
-                "Họ và tên": st.column_config.TextColumn("Họ và tên", width="medium", disabled=True),
-                "Chức vụ": st.column_config.TextColumn("Chức vụ", width="small", disabled=not is_admin),
-                "Phân môn chính": st.column_config.TextColumn("Phân môn chính", width="medium", disabled=not is_admin),
-                "Email": st.column_config.TextColumn("Email", width="medium", disabled=not is_admin),
-                "Số điện thoại": st.column_config.TextColumn("Số điện thoại", width="small", disabled=not is_admin),
-                "Ghi chú": st.column_config.TextColumn("Ghi chú", width="small", disabled=not is_admin)
+                "STT": st.column_config.NumberColumn("STT", width=50, disabled=True),
+                "Họ và tên": st.column_config.TextColumn("Họ và tên", width=200, disabled=True), # Tối ưu khít tên dài nhất
+                "Chức vụ": st.column_config.TextColumn("Chức vụ", width=100, disabled=not is_admin),
+                "Phân môn chính": st.column_config.TextColumn("Phân môn chính", width=180, disabled=not is_admin),
+                "Email": st.column_config.TextColumn("Email", width=200, disabled=not is_admin),
+                "Số điện thoại": st.column_config.TextColumn("Số điện thoại", width=120, disabled=not is_admin),
+                "Ghi chú": st.column_config.TextColumn("Ghi chú", width=100, disabled=not is_admin)
             }
             
-            # Dựng form chỉnh sửa trực tiếp không mất dấu nháy cho Admin ở Thẻ 1
             with st.form("form_realtime_members", border=False):
                 edited_m_df = st.data_editor(df_members, use_container_width=True, hide_index=True, column_config=col_cfg_members, key="stable_member_editor")
                 save_m = st.form_submit_button("💾 XÁC NHẬN LƯU THAY ĐỔI DANH SÁCH GIÁO VIÊN", type="primary", use_container_width=True, disabled=not is_admin)
@@ -192,17 +190,16 @@ def render_org_section():
         if not df_assign.empty:
             df_assign.insert(0, "STT", range(1, len(df_assign) + 1))
             
-            # 💥 CẤU HÌNH CỐ ĐỊNH KÍCH THƯỚC ĐỘ RỘNG 7 CỘT KHÍT CHUẨN THEO ẢNH MẪU CỦA THẦY Ở THẺ 2
+            # 💥 SỬA ĐỔI: Ép pixel cứng cho cột STT và Họ tên GV vừa vặn khít theo ảnh mẫu
             col_cfg_assign = {
-                "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
-                "Họ tên GV": st.column_config.TextColumn("Họ tên GV", width="medium", disabled=True),
-                "Môn-Lớp": st.column_config.TextColumn("Môn-Lớp", width="medium", disabled=not is_admin),
-                "Chủ nhiệm": st.column_config.TextColumn("Chủ nhiệm", width="small", disabled=not is_admin),
-                "Kiêm nhiệm": st.column_config.TextColumn("Kiêm nhiệm", width="small", disabled=not is_admin),
-                "Tổng số tiết": st.column_config.TextColumn("Tổng số tiết", width="small", disabled=not is_admin)
+                "STT": st.column_config.NumberColumn("STT", width=50, disabled=True),
+                "Họ tên GV": st.column_config.TextColumn("Họ tên GV", width=200, disabled=True), # Thu hẹp vừa vặn tên
+                "Môn-Lớp": st.column_config.TextColumn("Môn-Lớp", width=250, disabled=not is_admin),
+                "Chủ nhiệm": st.column_config.TextColumn("Chủ nhiệm", width=110, disabled=not is_admin),
+                "Kiêm nhiệm": st.column_config.TextColumn("Kiêm nhiệm", width=120, disabled=not is_admin),
+                "Tổng số tiết": st.column_config.TextColumn("Tổng số tiết", width=100, disabled=not is_admin)
             }
             
-            # 🛠️ TRÌNH CHỈNH SỬA TRỰC TIẾP FORM CHO THẺ 2
             with st.form("form_realtime_assign", border=False):
                 edited_a_df = st.data_editor(df_assign, use_container_width=True, hide_index=True, column_config=col_cfg_assign, key="stable_assign_editor")
                 save_a = st.form_submit_button("💾 XÁC NHẬN LƯU THAY ĐỔI SƠ ĐỒ PHÂN CÔNG DẠY", type="primary", use_container_width=True, disabled=not is_admin)
@@ -267,10 +264,11 @@ def render_org_section():
             df_emulation.insert(0, "Năm học", selected_year)
             df_emulation.insert(0, "STT", range(1, len(df_emulation) + 1))
             
+            # SỬA ĐỔI: Ép pixel cứng cho cột STT và Họ tên tại bảng thi đua thống nhất thiết kế
             col_config_emu = {
-                "STT": st.column_config.NumberColumn("STT", disabled=True),
-                "Năm học": st.column_config.TextColumn("Năm học", disabled=True),
-                "Họ và tên": st.column_config.TextColumn("Họ và tên", disabled=True),
+                "STT": st.column_config.NumberColumn("STT", width=50, disabled=True),
+                "Năm học": st.column_config.TextColumn("Năm học", width=90, disabled=True),
+                "Họ và tên": st.column_config.TextColumn("Họ và tên", width=200, disabled=True),
                 "Đánh giá viên chức": st.column_config.TextColumn("Đánh giá viên chức", disabled=not is_admin),
                 "BD HSG": st.column_config.TextColumn("BD HSG", disabled=not is_admin),
                 "NCKH": st.column_config.TextColumn("NCKH", disabled=not is_admin),
