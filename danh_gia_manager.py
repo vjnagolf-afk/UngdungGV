@@ -97,3 +97,99 @@ def export_rubric_to_docx(title_text, markdown_content):
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
+def render_assessment_section(run_ai_prompt_safe_func):
+    st.markdown("<h3 style='text-align: center; color: red;'>🎯 TRỢ LÝ THIẾT KẾ RUBRIC ĐÁNH GIÁ HỌC SINH TỰ ĐỘNG</h3>", unsafe_allow_html=True)
+    
+    tab_thiet_ke, tab_thu_vien = st.tabs(["📝 THIẾT KẾ TIÊU CHÍ RUBRIC AI", "🗄️ LƯU TRỮ RUBRIC"])
+    
+    if "ket_qua_rubric" not in st.session_state: st.session_state["ket_qua_rubric"] = ""
+    if "lich_su_rubric" not in st.session_state: st.session_state["lich_su_rubric"] = []
+
+    with tab_thiet_ke:
+        st.write("Nhập tên nội dung bài học hoặc chủ đề để hệ thống tự động thiết kế bảng tiêu chí đánh giá định lượng.")
+        
+        noi_dung = st.text_input("Tên nội dung kiến thức bài học / Chương / Chủ đề / Sản phẩm:", placeholder="Ví dụ: Mô hình xe phản lực - Chương Tốc độ chuyển động")
+        
+        col_lop, col_loai = st.columns(2)
+        with col_lop:
+            lop = st.text_input("Lớp:", placeholder="Ví dụ: 7A")
+        with col_loai:
+            hinh_thuc = st.selectbox("Hình thức đánh giá:", ["Qua sản phẩm học tập", "Qua bài thuyết trình", "Qua hoạt động nhóm", "Đánh giá năng lực thực hành"])
+
+        col_btn1, col_blank, col_btn2 = st.columns([2.0, 1.3, 1.7])
+        
+        with col_btn2:
+            st.write(""); st.write("")
+            nut_rubric = st.button("⚡ Khởi tạo tiêu chí bằng AI", type="primary", use_container_width=True)
+
+        if nut_rubric:
+            if not noi_dung:
+                st.warning("⚠️ Vui lòng điền nội dung kiến thức bài học hoặc tên sản phẩm!")
+            else:
+                with st.spinner("🧠 Hệ thống đang phân tích mục tiêu bài học để lập bảng Rubric..."):
+                    prompt_rubric = f"""
+                    Bạn là Chuyên gia kiểm tra đánh giá giáo dục phổ thông tại Việt Nam. Hãy thiết kế một bảng tiêu chí đánh giá định lượng (Rubric) chi tiết cho:
+                    - Nội dung/Sản phẩm: {noi_dung}
+                    - Lớp: {lop}
+                    - Hình thức đánh giá: {hinh_thuc}
+                    
+                    TIÊU ĐỀ KHỐI (Viết in hoa ở dòng đầu):
+                    BẢNG TIÊU CHÍ RUBRIC ĐÁNH GIÁ: {noi_dung.upper()} - LỚP {lop.upper()}
+                    
+                    YÊU CẦU CẤU TRÚC VÀ ĐỊNH DẠNG VĂN BẢN:
+                    1. BẢNG TIÊU CHÍ RUBRIC: Phải xây dựng dưới dạng bảng Markdown hoàn chỉnh bằng ký tự '|'. Các cột bao gồm: Tiêu chí đánh giá, Trọng số (%), Mức Tốt (8.0-10 điểm), Mức Khá (6.5-7.9 điểm), Mức Đạt (5.0-6.4 điểm), Mức Chưa đạt (Dưới 5.0 điểm).
+                    2. NỘI DUNG TIÊU CHÍ: Phải bám sát đặc thù kiến thức bài học/sản phẩm của học sinh lớp {lop}. Mô tả rõ ràng hành vi định lượng để giáo viên dễ chấm, không viết chung chung.
+                    3. BỎ TOÀN BỘ các ký tự dấu sao kép '**' ở đầu và cuối các từ hoặc tiêu đề cột để tránh lỗi font chữ đậm.
+                    4. Danh sách liệt kê dùng dấu gạch ngang '-' ở đầu dòng.
+                    """
+                    ket_qua, model = run_ai_prompt_safe_func(prompt_rubric)
+                    st.session_state["ket_qua_rubric"] = ket_qua
+
+        with col_btn1:
+            st.write(""); st.write("")
+            from danh_gia_manager import export_rubric_to_docx
+            title_file = f"Rubric_{lop}_{noi_dung[:20].replace(' ', '_')}" if noi_dung else "Rubric_Danh_Gia"
+            docx_data = export_rubric_to_docx(f"BẢNG RUBRIC ĐÁNH GIÁ: {noi_dung}", st.session_state["ket_qua_rubric"]) if st.session_state["ket_qua_rubric"] else b""
+            st.download_button(
+                label="📥 Tải file Word (.docx) chuẩn về máy",
+                data=docx_data,
+                file_name=f"{title_file}.docx",
+                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                disabled=(st.session_state["ket_qua_rubric"] == ""),
+                use_container_width=True
+            )
+
+        st.markdown("**📊 Bảng tiêu chí và thang điểm chi tiết sinh bởi AI:**")
+        with st.container(border=True):
+            if st.session_state["ket_qua_rubric"]:
+                st.markdown(st.session_state["ket_qua_rubric"])
+                if st.button("📥 Lưu vào thư viện hệ thống", use_container_width=True):
+                    st.session_state["lich_su_rubric"].append({"Nội dung": noi_dung, "Lớp": lop, "Data": st.session_state["ket_qua_rubric"]})
+                    st.success("✅ Đã lưu bảng Rubric thành công!")
+            else:
+                st.caption("Nội dung bảng Rubric sẽ hiển thị tại đây sau khi khởi tạo bằng AI...")
+
+    with tab_thu_vien:
+        st.markdown("### 🗄️ DANH SÁCH CÁC TIÊU CHÍ RUBRIC ĐÃ LƯU TRỮ")
+        if not st.session_state["lich_su_rubric"]:
+            st.info("Chưa có tiêu chí nào được lưu trong phiên làm việc này.")
+        else:
+            for idx, item in enumerate(st.session_state["lich_su_rubric"]):
+                col_exp, col_del = st.columns([0.88, 0.12])
+                with col_exp:
+                    with st.expander(f"📊 {idx+1}. {item['Nội dung']} - Lớp {item['Lớp']}"):
+                        st.markdown(item["Data"])
+                        from danh_gia_manager import export_rubric_to_docx
+                        saved_docx = export_rubric_to_docx(f"BẢNG RUBRIC ĐÁNH GIÁ: {item['Nội dung']}", item["Data"])
+                        st.download_button(
+                            label="📥 Tải lại file Word (.docx)",
+                            data=saved_docx,
+                            file_name=f"Luu_tru_Rubric_{idx+1}.docx",
+                            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+                            key=f"dl_saved_rubric_{idx}"
+                        )
+                with col_del:
+                    st.write("")
+                    if st.button("🗑️ Xóa", key=f"del_rubric_{idx}", use_container_width=True):
+                        st.session_state["lich_su_rubric"].pop(idx)
+                        st.rerun()
