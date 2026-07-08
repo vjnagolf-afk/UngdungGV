@@ -15,6 +15,7 @@ from pypdf import PdfReader
 # Gọi hàm thiết kế đề thi và quản lý điểm từ file module đã tách
 from exam_designer import render_exam_designer_section
 from grade_manager import render_grade_manager_section
+from timetable_manager import render_timetable_section
 # ==============================================================================
 # 1. CẤU HÌNH TRANG VÀ THIẾT LẬP SIÊU CSS ĐỊNH DẠNG THANH BÊN THEO BIỂU MẪU CHUẨN
 # ==============================================================================
@@ -252,7 +253,7 @@ st.sidebar.title("MENU HỆ THỐNG")
 phan_he_lam_viec = st.sidebar.radio("CHỌN PHÂN HỆ TÁC NGHIỆP", [" Trợ lý Giảng dạy (Giáo viên)", " Trợ lý Quản lý (Tổ chuyên môn)"], index=0)
 
 if phan_he_lam_viec == " Trợ lý Giảng dạy (Giáo viên)":
-    chuc_nang_chinh = st.sidebar.selectbox("CHỌN NỘI DUNG THỰC HIỆN", ["1. Thiết kế KHBD thông minh", "2. Thiết kế Đề KTĐG (Ma trận - Đặc tả)", "3. Đánh giá học sinh","4. Quản lý điểm học sinh (SMAS)"])
+    chuc_nang_chinh = st.sidebar.selectbox("CHỌN NỘI DUNG THỰC HIỆN", ["1. Thiết kế KHBD thông minh", "2. Thiết kế Đề KTĐG (Ma trận - Đặc tả)", "3. Đánh giá học sinh","4. Quản lý điểm học sinh (SMAS)","5. Quản lý Thời khóa biểu"])
 else:
     chuc_nang_chinh = st.sidebar.selectbox("QUẢN LÝ TỔ CHUYÊN MÔN", ["1. Hệ thống Quản lý và Phân công chuyên môn giảng dạy", "2. Xây dựng Biên bản sinh hoạt tổ chuyên môn định kỳ", "3. Xây dựng Kế hoạch Giáo dục cá nhân (Phụ lục III - Công văn 5512)", "4. Thống kê số liệu tổ"])
 
@@ -439,10 +440,13 @@ else:
                     st.download_button("📥 Tải Phụ lục III Word (.docx)", data=export_to_docx_vietnam_standard(res, f"Phu_luc_III_{gv_selected}"), file_name=f"Phu_luc_III_{gv_selected}.docx")
                 except Exception as e: st.error(f"Lỗi: {e}")
 
-    elif chuc_nang_chinh == "4. Thống kê số liệu tổ":
+   elif chuc_nang_chinh == "4. Thống kê số liệu tổ":
         st.header("📊 THỐNG KÊ GIÁO VIÊN TỔ")
         tong_nhan_su = len(st.session_state["db_thanh_vien"])
         st.metric("Tổng số thành viên tổ", f"{tong_nhan_su} Giáo viên")
         df_tv_current = pd.DataFrame(st.session_state["db_thanh_vien"])
         if "Phân môn chính" in df_tv_current.columns:
             st.bar_chart(df_tv_current["Phân môn chính"].value_counts())
+
+    elif chuc_nang_chinh == "5. Quản lý Thời khóa biểu":
+        render_timetable_section()  # Dòng này phải thụt vào trong như trên
