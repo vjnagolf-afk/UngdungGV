@@ -22,12 +22,11 @@ def extract_text_from_files(uploaded_files):
         except Exception as e:
             st.error(f"Lỗi khi đọc file {file.name}: {str(e)}")
     return combined_text
-
 # --- GIAO DIỆN CHÍNH CỦA PHÂN HỆ ---
 def render_khbd_section(run_ai_prompt_safe_func):
     
     # 1. KHỞI TẠO 2 THẺ (TABS) NGANG THEO YÊU CẦU MỚI
-    tab_xay_dung, tab_luu_khbd = st.tabs(["📝 XÂY DỰNG KẾ HOẠCH BÀI DẠY AI", "🗄️ LƯU KHBD ĐÃ XD"])
+    tab_xay_dung, tab_luu_khbd = st.tabs(["... XÂY DỰNG KẾ HOẠCH BÀI DẠY AI", "🗄️ LƯU KHBD ĐÃ XD"])
     
     # Khởi tạo vùng chứa nội dung giáo án trong bộ nhớ tạm nếu chưa có
     if "ket_qua_giao_an" not in st.session_state:
@@ -35,7 +34,7 @@ def render_khbd_section(run_ai_prompt_safe_func):
     if "lich_su_khbd" not in st.session_state:
         st.session_state["lich_su_khbd"] = []
 
-    # ==================== THẺ 1: XÂY DỰNG KẾ HOẠCH BÀI DẠY AI ====================
+    # ==================== THÊ 1: XÂY DỰNG KẾ HOẠCH BÀI DẠY AI ====================
     with tab_xay_dung:
         st.markdown("<h3 style='text-align: center; color: red;'>📖 CHỨC NĂNG XÂY DỰNG KẾ HOẠCH BÀI DẠY AI THEO MẪU KHÁCH</h3>", unsafe_allow_html=True)
         
@@ -69,7 +68,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
         with col_btn1:
             st.write("") # Tạo khoảng cách dòng
             st.write("") 
-            # Nút xuất file nhanh về máy tính cá nhân
             st.download_button(
                 label="💾 Tải file KHBD về máy",
                 data=st.session_state["ket_qua_giao_an"],
@@ -98,7 +96,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
             if st.session_state["ket_qua_giao_an"]:
                 st.markdown(st.session_state["ket_qua_giao_an"])
                 
-                # Thêm nút bấm phụ trợ để lưu nhanh kết quả sang Thẻ 2
                 if st.button("📥 Lưu bài soạn này vào Thư viện hệ thống"):
                     if ten_bai:
                         st.session_state["lich_su_khbd"].append({
@@ -121,7 +118,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
         if not st.session_state["lich_su_khbd"]:
             st.info("Chưa có bài soạn nào được lưu. Sau khi tạo giáo án thành công ở Thẻ 1, hãy bấm nút 'Lưu bài soạn này vào Thư viện hệ thống'.")
         else:
-            # Hiển thị danh sách các bài đã lưu theo cấu trúc rút gọn hình hộp Expander
             for idx, item in enumerate(st.session_state["lich_su_khbd"]):
                 with st.expander(f"📚 {idx+1}. {item['Tên bài']} - Môn: {item['Môn']} (Lớp {item['Lớp']})"):
                     st.markdown(item["Nội dung"])
@@ -140,17 +136,14 @@ def render_khbd_section(run_ai_prompt_safe_func):
         else:
             with st.spinner("🧠 Trợ lý AI đang đọc kỹ các file nguồn và tiến hành lập tiến trình bài dạy..."):
                 
-                # Trích xuất văn bản từ học liệu tham khảo (nếu có tải lên)
                 nguon_van_ban = ""
                 if tai_hoc_lieu:
                     nguon_van_ban = extract_text_from_files(tai_hoc_lieu)
                 
-                # Trích xuất dữ liệu từ giáo án mẫu (nếu có tải lên)
                 mau_giao_an_text = ""
                 if tai_giao_an_mau:
                     mau_giao_an_text = extract_text_from_files([tai_giao_an_mau])
 
-                # Xây dựng câu lệnh Prompt thông minh, tích hợp ô Yêu cầu khác
                 prompt_yeu_cau = f"""
                 Bạn là một chuyên gia giáo dục cao cấp tại Việt Nam. Nhiệm vụ của bạn là biên soạn Kế hoạch bài dạy (Giáo án) chi tiết.
                 
@@ -171,3 +164,11 @@ def render_khbd_section(run_ai_prompt_safe_func):
                 
                 {f'MẪU THIẾT KẾ GIÁO ÁN THAM KHẢO (Hãy bắt chước phong cách trình bày từ mẫu này): {mau_giao_an_text}' if mau_giao_an_text else ''}
                 
+                {f'DỮ LIỆU NGUỒN HỌC LIỆU ĐỂ TRÍCH XUẤT KIẾN THỨC BÀI HỌC: {nguon_van_ban}' if nguon_van_ban else ''}
+                
+                Hãy trình bày văn bản rõ ràng, chuyên nghiệp dưới định dạng Markdown, phân tách tiêu đề bằng các dấu gạch ngang đẹp mắt.
+                """
+                
+                ket_qua_ai, model_used = run_ai_prompt_safe_func(prompt_yeu_cau)
+                st.session_state["ket_qua_giao_an"] = ket_qua_ai
+                st.rerun()
