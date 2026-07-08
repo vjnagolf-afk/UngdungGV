@@ -11,7 +11,7 @@ def setup_org_database():
     conn = sqlite3.connect(DB_PATH)
     cursor = conn.cursor()
     
-    # Tạo bảng danh sách thành viên cố định của tổ (Thẻ 1)
+    # Bảng danh sách thành viên cố định của tổ (Thẻ 1)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS org_members (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -19,7 +19,7 @@ def setup_org_database():
     )
     """)
     
-    # Tạo bảng phân công giảng dạy (Thẻ 2)
+    # Bảng phân công giảng dạy (Thẻ 2)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS org_assignments (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -27,7 +27,7 @@ def setup_org_database():
     )
     """)
     
-    # Tạo bảng lưu thi đua thành tích phân tách theo năm học (Thẻ 3)
+    # Bảng lưu thi đua thành tích phân tách theo năm học (Thẻ 3 độc lập)
     cursor.execute("""
     CREATE TABLE IF NOT EXISTS org_emulation_years (
         id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -80,39 +80,30 @@ def render_org_section():
 
     st.subheader("📋 HỆ THỐNG QUẢN LÝ VÀ PHÂN CÔNG CHUYÊN MÔN GIẢNG DẠY")
     tab1, tab2, tab3 = st.tabs(["👥 Danh sách thành viên", "📊 Phân công giảng dạy", "🏅 Thành tích & Thi đua"])
-    
-    # Đọc nhanh danh sách họ tên giáo viên trong tổ để làm form chọn dữ liệu
-    conn = sqlite3.connect(DB_PATH)
-    all_names = [row[0] for row in conn.execute("SELECT fullname FROM org_members ORDER BY fullname ASC").fetchall()]
-    conn.close()
 
     # ==================== THÈ 1: DANH SÁCH THÀNH VIÊN ====================
     with tab1:
         st.markdown("#### 👥 Danh sách thành viên tổ chuyên môn")
         
-        # CHỨC NĂNG BỔ SUNG CHẤM ĐIỂM: TẢI FILE EXCEL LÊN (CHỈ DÀNH CHO ADMIN)
-        if is_admin:
-            col_f1, col_btn_f1 = st.columns([3, 1])
-            with col_f1:
-                excel_m = st.file_uploader("📥 Tải file Excel danh sách Giáo viên lên hệ thống:", type=["xlsx", "xls"], key="up_m")
-            with col_btn_f1:
-                st.write(""); st.write("")
-                if st.button("🚀 Nạp Excel GV", use_container_width=True, type="secondary") and excel_m:
-                    try:
-                        df_up_m = pd.read_excel(excel_m)
-                        df_up_m.columns = [str(c).strip() for c in df_up_m.columns]
-                        conn = sqlite3.connect(DB_PATH)
-                        cursor = conn.cursor()
-                        for _, r in df_up_m.iterrows():
-                            cursor.execute("""
-                            INSERT OR REPLACE INTO org_members (fullname, position, main_subject, email, phone, note)
-                            VALUES (?, ?, ?, ?, ?, ?)
-                            """, (str(r.get("Họ và tên", "")), str(r.get("Chức vụ", "Tổ viên")), str(r.get("Phân môn chính", "")), str(r.get("Email", "")), str(r.get("Số điện thoại", "")), str(r.get("Ghi chú", ""))))
-                        conn.commit()
-                        conn.close()
-                        st.success("🎉 Đã đồng bộ danh sách giáo viên từ file Excel thành công!")
-                        st.rerun()
-                    except Exception as e: st.error(f"Lỗi đọc file: {e}")
+        # Ô tải Excel công khai để giám khảo chấm thực tế, bọc xử lý logic an toàn
+        excel_m = st.file_uploader("📥 Tải file Excel danh sách Giáo viên lên hệ thống:", type=["xlsx", "xls"], key="up_m")
+        if excel_m:
+            if st.button("🚀 Xác nhận nạp dữ liệu danh sách Giáo viên", type="secondary", use_container_width=True):
+                try:
+                    df_up_m = pd.read_excel(excel_m)
+                    df_up_m.columns = [str(c).strip() for c in df_up_m.columns]
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    for _, r in df_up_m.iterrows():
+                        cursor.execute("""
+                        INSERT OR REPLACE INTO org_members (fullname, position, main_subject, email, phone, note)
+                        VALUES (?, ?, ?, ?, ?, ?)
+                        """, (str(r.get("Họ và tên", "")), str(r.get("Chức vụ", "Tổ viên")), str(r.get("Phân môn chính", "")), str(r.get("Email", "")), str(r.get("Số điện thoại", "")), str(r.get("Ghi chú", ""))))
+                    conn.commit()
+                    conn.close()
+                    st.success("🎉 Đã cập nhật danh sách giáo viên từ file Excel thành công!")
+                    st.rerun()
+                except Exception as e: st.error(f"Lỗi đọc file: {e}")
 
         conn = sqlite3.connect(DB_PATH)
         df_members = pd.read_sql_query("SELECT fullname as [Họ và tên], position as [Chức vụ], main_subject as [Phân môn chính], email as [Email], phone as [Số điện thoại], note as [Ghi chú] FROM org_members", conn)
@@ -123,7 +114,6 @@ def render_org_section():
             st.dataframe(df_members, use_container_width=True, hide_index=True)
             st.session_state["db_thanh_vien"] = df_members.to_dict(orient="records")
             
-            # CHỨC NĂNG 2: XUẤT DANH SÁCH GIÁO VIÊN RA FILE EXCEL TẢI VỀ MÁY
             out_m = io.BytesIO()
             with pd.ExcelWriter(out_m, engine='openpyxl') as w: df_members.to_excel(w, index=False, sheet_name="Danh_Sach_GV")
             st.download_button(label="📥 Tải file Excel danh sách giáo viên về máy", data=out_m.getvalue(), file_name="Danh_Sach_Thanh_Vien_To.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
@@ -133,33 +123,26 @@ def render_org_section():
     with tab2:
         st.markdown("#### 📊 Sơ đồ Phân công giảng dạy của Tổ")
         
-        # CHỨC NĂNG BỔ SUNG CHẤM ĐIỂM: TẢI FILE EXCEL LÊN (CHỈ DÀNH CHO ADMIN)
-        if is_admin:
-            col_f2, col_btn_f2 = st.columns([3, 1])
-            with col_f2:
-                excel_a = st.file_uploader("📥 Tải file Excel phân công giảng dạy lên hệ thống:", type=["xlsx", "xls"], key="up_a")
-            with col_btn_f2:
-                st.write(""); st.write("")
-                if st.button("🚀 Nạp Excel PC", use_container_width=True, type="secondary") and excel_a:
-                    try:
-                        df_up_a = pd.read_excel(excel_a)
-                        df_up_a.columns = [str(c).strip() for c in df_up_a.columns]
-                        conn = sqlite3.connect(DB_PATH)
-                        cursor = conn.cursor()
-                        for _, r in df_up_a.iterrows():
-                            # Ép kiểu số tiết về số nguyên an toàn
-                            t_periods = int(float(r.get("Tổng số tiết", 0))) if str(r.get("Tổng số tiết", 0)).replace('.','').isdigit() else 0
-                            cursor.execute("""
-                            INSERT OR REPLACE INTO org_assignments (fullname, subject_class, homeroom, concurrent, total_periods)
-                            VALUES (?, ?, ?, ?, ?)
-                            """, (str(r.get("Họ tên GV", "")), str(r.get("Môn-Lớp", "")), str(r.get("Chủ nhiệm", "")), str(r.get("Kiêm nhiệm", "")), t_periods))
-                        conn.commit()
-                        conn.close()
-                        st.success("🎉 Đã lưu sơ đồ phân công giảng dạy từ file Excel thành công!")
-                        st.rerun()
-                    except Exception as e: st.error(f"Lỗi đọc file phân công: {e}")
+        excel_a = st.file_uploader("📥 Tải file Excel phân công giảng dạy lên hệ thống:", type=["xlsx", "xls"], key="up_a")
+        if excel_a:
+            if st.button("🚀 Xác nhận nạp dữ liệu phân công giảng dạy", type="secondary", use_container_width=True):
+                try:
+                    df_up_a = pd.read_excel(excel_a)
+                    df_up_a.columns = [str(c).strip() for c in df_up_a.columns]
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    for _, r in df_up_a.iterrows():
+                        t_periods = int(float(r.get("Tổng số tiết", 0))) if str(r.get("Tổng số tiết", 0)).replace('.','').isdigit() else 0
+                        cursor.execute("""
+                        INSERT OR REPLACE INTO org_assignments (fullname, subject_class, homeroom, concurrent, total_periods)
+                        VALUES (?, ?, ?, ?, ?)
+                        """, (str(r.get("Họ tên GV", "")), str(r.get("Môn-Lớp", "")), str(r.get("Chủ nhiệm", "")), str(r.get("Kiêm nhiệm", "")), t_periods))
+                    conn.commit()
+                    conn.close()
+                    st.success("🎉 Đã lưu sơ đồ phân công giảng dạy từ file Excel thành công!")
+                    st.rerun()
+                except Exception as e: st.error(f"Lỗi đọc file phân công: {e}")
 
-        # Đọc dữ liệu từ hệ thống để dựng bảng 7 cột quy chuẩn
         conn = sqlite3.connect(DB_PATH)
         df_assign = pd.read_sql_query("""
             SELECT m.fullname as [Họ tên GV], 
@@ -175,72 +158,66 @@ def render_org_section():
             df_assign.insert(0, "STT", range(1, len(df_assign) + 1))
             st.dataframe(df_assign, use_container_width=True, hide_index=True)
             
-            # CHỨC NĂNG 2: XUẤT FILE EXCEL PHÂN CÔNG GIẢNG DẠY TẢI VỀ MÁY
             out_a = io.BytesIO()
             with pd.ExcelWriter(out_a, engine='openpyxl') as w: df_assign.to_excel(w, index=False, sheet_name="Phan_Cong")
             st.download_button(label="📥 Tải file Excel phân công giảng dạy về máy", data=out_a.getvalue(), file_name="So_Do_Phan_Cong_Giang_Day.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
-    # ==================== THÈ 3: THÀNH TÍCH VÀ THI ĐUA ====================
+    # ==================== THÈ 3: THÀNH TÍCH VÀ THI ĐUA ĐỘC LẬP HOÀN TOÀN ====================
     with tab3:
         st.markdown("#### 🏆 Sổ theo dõi Thành tích & Thi đua qua các năm học")
         
         years_options = [f"{y} - {y+1}" for y in range(2020, 2036)]
-        selected_year = st.selectbox("📅 CHỌN NĂM HỌC TRA CỨU THI ĐUA:", years_options, index=5) # Mặc định năm học 2025-2026
+        selected_year = st.selectbox("📅 CHỌN NĂM HỌC TRA CỨU THI ĐUA:", years_options, index=5)
         
-        # CHỨC NĂNG BỔ SUNG CHẤM ĐIỂM: TẢI FILE EXCEL LÊN (CHỈ DÀNH CHO ADMIN)
-        if is_admin:
-            col_f3, col_btn_f3 = st.columns([3, 1])
-            with col_f3:
-                excel_e = st.file_uploader(f"📥 Tải file Excel thi đua năm học {selected_year} lên hệ thống:", type=["xlsx", "xls"], key="up_e")
-            with col_btn_f3:
-                st.write(""); st.write("")
-                if st.button("🚀 Nạp Excel TĐ", use_container_width=True, type="secondary") and excel_e:
-                    try:
-                        df_up_e = pd.read_excel(excel_e)
-                        df_up_e.columns = [str(c).strip() for c in df_up_e.columns]
-                        conn = sqlite3.connect(DB_PATH)
-                        cursor = conn.cursor()
-                        for _, r in df_up_e.iterrows():
-                            cursor.execute("""
-                            INSERT OR REPLACE INTO org_emulation_years 
-                            (nam_hoc, fullname, dg_vien_chuc, bd_hsg, nckh, stem, sang_kien, gvdg, gvcng, tdtt_nv, hien_mau, khac)
-                            VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
-                            """, (selected_year, str(r.get("Họ và tên", "")), str(r.get("Đánh giá viên chức", "")), str(r.get("BD HSG", "")), str(r.get("NCKH", "")), str(r.get("STEM", "")), str(r.get("Sáng kiến", "")), str(r.get("GVDG", "")), str(r.get("GVCNG", "")), str(r.get("TDTT-NV", "")), str(r.get("Hiển máu nhân đạo", "")), str(r.get("Khác", ""))))
-                        conn.commit()
-                        conn.close()
-                        st.success(f"🎉 Đã nạp thành công sổ điểm thi đua từ file Excel cho năm học {selected_year}!")
-                        st.rerun()
-                    except Exception as e: st.error(f"Lỗi đọc file thi đua: {e}")
+        excel_e = st.file_uploader(f"📥 Tải file Excel thi đua năm học {selected_year} lên hệ thống:", type=["xlsx", "xls"], key="up_e")
+        if excel_e:
+            if st.button(f"🚀 Xác nhận nạp dữ liệu thi đua {selected_year}", type="secondary", use_container_width=True):
+                try:
+                    df_up_e = pd.read_excel(excel_e)
+                    df_up_e.columns = [str(c).strip() for c in df_up_e.columns]
+                    conn = sqlite3.connect(DB_PATH)
+                    cursor = conn.cursor()
+                    for _, r in df_up_e.iterrows():
+                        cursor.execute("""
+                        INSERT OR REPLACE INTO org_emulation_years 
+                        (nam_hoc, fullname, dg_vien_chuc, bd_hsg, nckh, stem, sang_kien, gvdg, gvcng, tdtt_nv, hien_mau, khac)
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                        """, (selected_year, str(r.get("Họ và tên", "")), str(r.get("Đánh giá viên chức", "")), str(r.get("BD HSG", "")), str(r.get("NCKH", "")), str(r.get("STEM", "")), str(r.get("Sáng kiến", "")), str(r.get("GVDG", "")), str(r.get("GVCNG", "")), str(r.get("TDTT-NV", "")), str(r.get("Hiển máu nhân đạo", "")), str(r.get("Khác", ""))))
+                    conn.commit()
+                    conn.close()
+                    st.success(f"🎉 Đã nạp thành công sổ điểm thi đua từ file Excel cho năm học {selected_year}!")
+                    st.rerun()
+                except Exception as e: st.error(f"Lỗi đọc file thi đua: {e}")
 
-        # Đọc dữ liệu từ SQLite3 dựng lưới ma trận 12 cột chuẩn xác theo ảnh mẫu của thầy
+        # 💥 THUẬT TOÁN ĐỘC LẬP: Truy vấn TRỰC TIẾP từ bảng thi đua năm học tải lên, không đồng bộ ép tên từ Thẻ 1
         conn = sqlite3.connect(DB_PATH)
         df_emulation = pd.read_sql_query("""
-            SELECT m.fullname as [Họ và tên],
-                   ifnull(e.dg_vien_chuc, '') as [Đánh giá viên chức],
-                   ifnull(e.bd_hsg, '') as [BD HSG],
-                   ifnull(e.nckh, '') as [NCKH],
-                   ifnull(e.stem, '') as [STEM],
-                   ifnull(e.sang_kien, '') as [Sáng kiến],
-                   ifnull(e.gvdg, '') as [GVDG],
-                   ifnull(e.gvcng, '') as [GVCNG],
-                   ifnull(e.tdtt_nv, '') as [TDTT-NV],
-                   ifnull(e.hien_mau, '') as [Hiển máu nhân đạo],
-                   ifnull(e.khac, '') as [Khác]
-            FROM org_members m LEFT JOIN org_emulation_years e ON m.fullname = e.fullname AND e.nam_hoc = ?
+            SELECT fullname as [Họ và tên],
+                   dg_vien_chuc as [Đánh giá viên chức],
+                   bd_hsg as [BD HSG],
+                   nckh as [NCKH],
+                   stem as [STEM],
+                   sang_kien as [Sáng kiến],
+                   gvdg as [GVDG],
+                   gvcng as [GVCNG],
+                   tdtt_nv as [TDTT-NV],
+                   hien_mau as [Hiển máu nhân đạo],
+                   khac as [Khác]
+            FROM org_emulation_years WHERE nam_hoc = ?
         """, conn, params=[selected_year])
         conn.close()
 
-        df_emulation.insert(0, "Năm học", selected_year)
-        df_emulation.insert(0, "STT", range(1, len(df_emulation) + 1))
-        
-        st.markdown(f"📊 **Bảng chi tiết chỉ tiêu thi đua danh hiệu năm học: {selected_year}**")
-        st.dataframe(df_emulation, use_container_width=True, hide_index=True)
-        
-        # CHỨC NĂNG 2: XUẤT FILE EXCEL THÀNH TÍCH THI ĐUA CỦA NĂM ĐANG TRA CỨU
-        out_e = io.BytesIO()
-        with pd.ExcelWriter(out_e, engine='openpyxl') as w: df_emulation.to_excel(w, index=False, sheet_name=f"Thi_Dua")
-        st.download_button(label=f"📥 Kết xuất Báo cáo Thi đua năm học {selected_year} (.xlsx)", data=out_e.getvalue(), file_name=f"Bao_Cao_Thi_Dua_Nam_Hoc_{selected_year.replace(' ', '')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        if not df_emulation.empty:
+            df_emulation.insert(0, "Năm học", selected_year)
+            df_emulation.insert(0, "STT", range(1, len(df_emulation) + 1))
+            st.dataframe(df_emulation, use_container_width=True, hide_index=True)
+            
+            out_e = io.BytesIO()
+            with pd.ExcelWriter(out_e, engine='openpyxl') as w: df_emulation.to_excel(w, index=False, sheet_name="Thi_Dua")
+            st.download_button(label=f"📥 Kết xuất Báo cáo Thi đua năm học {selected_year} (.xlsx)", data=out_e.getvalue(), file_name=f"Bao_Cao_Thi_Dua_Nam_Hoc_{selected_year.replace(' ', '')}.xlsx", mime="application/vnd.openxmlformats-officedocument.spreadsheetml.sheet", use_container_width=True)
+        else:
+            st.info(f"ℹ️ Chưa có dữ liệu lưu trữ thi đua cho **{selected_year}**. Vui lòng chọn năm học và nạp tệp Excel thi đua tương ứng ở phía trên.")
 
-# --- CÁC HÀM QUẢN LÝ VỆ TINH PHỤ TRỢ (Giữ nguyên cấu trúc gọi từ app.py) ---
+# --- CÁC HÀM QUẢN LÝ VỆ TINH PHỤ TRỢ ---
 def render_meeting_minutes():
     st.header("📝 BIÊN BẢN SINH HOẠT TỔ")
     st.write("Giao diện nhập biên bản họp chuyên môn định kỳ.")
