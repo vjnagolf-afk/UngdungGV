@@ -1,6 +1,7 @@
 import streamlit as st
 import docx  
-from docx.shared import Inches
+from docx.shared import Inches, Pt, RGBColor
+from docx.enum.text import WD_ALIGN_PARAGRAPH
 import io
 import re
 from pypdf import PdfReader
@@ -34,25 +35,33 @@ def extract_context_from_uploaded_files(uploaded_files):
             st.error(f"Lỗi khi xử lý file {file.name}: {str(e)}")
     return combined_text, extracted_images
 
-# --- HÀM XUẤT GIÁO ÁN SANG FILE WORD CHUẨN BIỂU BẢNG & CÔNG THỨC ---
+# --- HÀM XUẤT FILE WORD (.DOCX) CHUẨN ĐỊNH DẠNG MÀU SẮC, FONT, CỠ CHỮ ---
 def export_khbd_to_docx(markdown_content, images_list):
     doc = docx.Document()
-    # Định dạng lề trang chuẩn hành chính (Top: 2cm, Bottom: 2cm, Left: 3cm, Right: 1.5cm)
+    # Định dạng lề trang chuẩn văn bản hành chính Việt Nam
     for section in doc.sections:
         section.top_margin = Inches(0.79)
         section.bottom_margin = Inches(0.79)
         section.left_margin = Inches(1.18)
         section.right_margin = Inches(0.59)
 
+    # Cấu hình màu sắc chuẩn
+    MAU_DO = RGBColor(255, 0, 0)
+    MAU_XANH_DUONG = RGBColor(0, 51, 153)
+    MAU_DEN = RGBColor(0, 0, 0)
+
     lines = markdown_content.split('\n')
     in_table = False
     table_data = []
 
     for line in lines:
+        clean_line = line.strip().replace('**', '').replace('###', '').replace('##', '').replace('#', '')
+        
+        # 1. XỬ LÝ BIỂU BẢNG VÀ PHIẾU HỌC TẬP
         if line.strip().startswith('|') and line.strip().endswith('|'):
             if '---|' in line or ':---|' in line: continue
             in_table = True
-            cells = [c.strip() for c in line.split('|')[1:-1]]
+            cells = [c.strip().replace('**', '') for c in line.split('|')[1:-1]]
             table_data.append(cells)
             continue
         else:
@@ -64,29 +73,59 @@ def export_khbd_to_docx(markdown_content, images_list):
                     word_table.style = 'Table Grid'
                     for r_idx, row in enumerate(table_data):
                         for c_idx, val in enumerate(row):
-                            if c_idx < num_cols: word_table.cell(r_idx, c_idx).text = val
+                            if c_idx < num_cols:
+                                cell = word_table.cell(r_idx, c_idx)
+                                cell.text = val
+                                for p in cell.paragraphs:
+                                    p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+                                    for r in p.runs:
+                                        r.font.name = 'Times New Roman'
+                                        r.font.size = Pt(14)
+                                        r.font.color.rgb = MAU_DEN
                 in_table = False
                 table_data = []
 
-        if line.startswith('#'):
-            level = len(line) - len(line.lstrip('#'))
-            title_text = line.lstrip('#').strip()
-            heading = doc.add_heading(title_text, level=min(level, 3))
-            heading.style.font.name = 'Times New Roman'
-        elif line.strip():
+        if not clean_line: continue
+
+        p = doc.add_paragraph()
+        # Thừa kế căn lề đều 2 bên cho nội dung thông thường
+        p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
+
+        # 2. ĐỊNH DẠNG TIÊU ĐỀ BÀI HỌC (IN HOA ĐẬM, CĂN GIỮA, CHỮ ĐỎ)
+        if any(x in clean_line.upper() for x in ["MÔN HỌC:", "LỚP:", "BÀI:", "KẾ HOẠCH BÀI DẠY"]):
+            p.alignment = WD_ALIGN_PARAGRAPH.CENTER
+            run = p.add_run(clean_line.upper())
+            run.bold = True
+            run.font.name = 'Times New Roman'
+            run.font.size = Pt(14)
+            run.font.color.rgb = MAU_DO
+            
+        # 3. ĐỊNH DẠNG ĐỀ MỤC LỚN (IN ĐẬM, CĂN TRÁI, CHỮ XANH DƯƠNG)
+        elif re.match(r'^(I|II|III|IV|V|VI)\.', clean_line) or re.match(r'^\d+\.', clean_line):
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            run = p.add_run(clean_line)
+            run.bold = True
+            run.font.name = 'Times New Roman'
+            run.font.size = Pt(14)
+            run.font.color.rgb = MAU_XANH_DUONG
+
+        # 4. ĐỊNH DẠNG NỘI DUNG THÔNG THƯỜNG (CHỮ ĐEN, CĂN ĐỀU CẢ 2 BÊN)
+        else:
             if "[Hình ảnh minh họa]" in line and images_list:
                 try:
-                    img_stream = io.BytesIO(images_list[0])
+                    img_stream = io.BytesIO(images_list)
                     doc.add_picture(img_stream, width=Inches(4.5))
+                    continue
                 except: pass
-            else:
-                p = doc.add_paragraph()
-                p.style.font.name = 'Times New Roman'
-                parts = re.split(r'(\d+)', line)
-                for part in parts:
-                    run = p.add_run(part)
-                    if part.isdigit() and any(x in line for x in ['H2O', 'CO2', 'Fe', 'O2', 'H2SO4', 'N2', 'CH4']):
-                        run.font.subscript = True
+            
+            parts = re.split(r'(\d+)', clean_line)
+            for part in parts:
+                run = p.add_run(part)
+                run.font.name = 'Times New Roman'
+                run.font.size = Pt(14)
+                run.font.color.rgb = MAU_DEN
+                if part.isdigit() and any(x in clean_line for x in ['H2O', 'CO2', 'Fe', 'O2', 'H2SO4', 'N2', 'CH4']):
+                    run.font.subscript = True
 
     bio = io.BytesIO()
     doc.save(bio)
@@ -94,13 +133,13 @@ def export_khbd_to_docx(markdown_content, images_list):
 # --- GIAO DIỆN CHÍNH CỦA PHÂN HỆ ---
 def render_khbd_section(run_ai_prompt_safe_func):
     
-    tab_xay_dung, tab_luu_khbd = st.tabs(["... XÂY DỰNG KẾ HOẠCH BÀI DẠY AI", "🗄️ LƯU KHBD ĐÃ XD"])
+    tab_xay_dung, tab_luu_khbd = st.tabs(["📝 XÂY DỰNG KẾ HOẠCH BÀI DẠY AI", "🗄️ LƯU KHBD ĐÃ XD"])
     
     if "ket_qua_giao_an" not in st.session_state: st.session_state["ket_qua_giao_an"] = ""
     if "lich_su_khbd" not in st.session_state: st.session_state["lich_su_khbd"] = []
     if "kho_anh_trich_xuat" not in st.session_state: st.session_state["kho_anh_trich_xuat"] = []
 
-    # ==================== THỂ 1: XÂY DỰNG KẾ HOẠCH BÀI DẠY AI ====================
+    # ==================== THẺ 1: XÂY DỰNG KẾ HOẠCH BÀI DẠY AI ====================
     with tab_xay_dung:
         st.markdown("<h3 style='text-align: center; color: red;'>📖 CHỨC NĂNG XÂY DỰNG KẾ HOẠCH BÀI DẠY TỐI ƯU HÓA CAO</h3>", unsafe_allow_html=True)
         
@@ -110,9 +149,9 @@ def render_khbd_section(run_ai_prompt_safe_func):
         with col_mon:
             mon_hoc = st.selectbox("Môn học:", ["Khoa học tự nhiên", "Toán học", "Ngữ văn", "Tiếng Anh", "Lịch sử & Địa lý", "Tin học", "Công nghệ"])
         with col_tg:
-            thoi_luong = st.text_input("Thời lượng:", placeholder="Ví dụ: 3 tiết")
+            thoi_luong = st.text_input("Thời lượng:", placeholder="Ví dụ: 2 Tiết")
         with col_lop:
-            lop = st.text_input("Lớp:", placeholder="Ví dụ: 6A")
+            lop = st.text_input("Lớp:", placeholder="Ví dụ: 7A")
             
         tich_hop_ai = st.checkbox("Tích hợp giáo dục AI (Năng lực số và AI)", value=True)
         uati_bam_sat = st.checkbox("Ưu tiên bám sát 100% nội dung tài liệu nguồn tải lên", value=True)
@@ -123,7 +162,7 @@ def render_khbd_section(run_ai_prompt_safe_func):
         col_btn1, col_blank, col_btn2 = st.columns([2.0, 1.3, 1.7])
         
         st.markdown("**💬 Yêu cầu ràng buộc khác (Để AI làm căn cứ bổ sung khi soạn bài):**")
-        yeu_cau_khac = st.text_area("Nhập lưu ý...", placeholder="Ví dụ: Thiết kế thêm bảng phụ lục so sánh các chất, viết rõ phương trình hóa học cân bằng...", label_visibility="collapsed", height=100)
+        yeu_cau_khac = st.text_area("Nhập lưu ý...", placeholder="Ví dụ: Thiết kế bảng biểu so sánh rõ ràng, sử dụng ký tự unicode cho phương trình...", label_visibility="collapsed", height=100)
         
         with col_btn2:
             st.write(""); st.write("")
@@ -141,24 +180,31 @@ def render_khbd_section(run_ai_prompt_safe_func):
                     st.session_state["kho_anh_trich_xuat"] = danh_sách_ảnh
 
                     prompt_yeu_cau = f"""
-                    Bạn là Chuyên gia viết giáo án cấp cao bậc THCS/THPT tại Việt Nam. Hãy soạn một Kế hoạch bài dạy cực kỳ chi tiết, đầy đủ chữ.
-                    Tên bài: {ten_bai} | Môn: {mon_hoc} | Thời lượng: {thoi_luong} | Lớp: {lop}
+                    Bạn là Chuyên gia viết giáo án cấp cao bậc THCS/THPT tại Việt Nam. Hãy soạn một Kế hoạch bài dạy cực kỳ chi tiết, đầy đủ chữ theo đúng yêu cầu cấu trúc và định dạng sau.
                     
-                    YÊU CẦU NỘI DUNG VÀ CẤU TRÚC BẮT BUỘC:
-                    1. BỐ CỤC: Tuân thủ 100% cấu trúc PHỤ LỤC IV của Công văn 5512/BGDĐT:
-                       I. MỤC TIÊU (1. Kiến thức, 2. Năng lực, 3. Phẩm chất)
-                       II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU
-                       III. TIẾN TRÌNH DẠY HỌC: Phân bổ tiến trình hợp lý cho tổng thời lượng là {thoi_luong}. Gồm đầy đủ 4 Hoạt động: Hoạt động 1: Mở đầu; Hoạt động 2: Hình thành kiến thức mới; Hoạt động 3: Luyện tập; Hoạt động 4: Vận dụng.
-                       *Mỗi hoạt động BẮT BUỘC viết đầy đủ nội dung chữ cho cả 4 mục nhỏ: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện (Giao nhiệm vụ -> Thực hiện -> Báo cáo thảo luận -> Kết luận nhận định).
+                    TIÊU ĐỀ BÀI HỌC (Viết in hoa ở đầu giáo án):
+                    MÔN HỌC: {mon_hoc.upper()}
+                    LỚP: {lop.upper()}
+                    BÀI: {ten_bai.upper()} ({thoi_luong})
                     
-                    2. ĐỘ CHÍNH XÁC & ĐỊNH DẠNG:
-                       - Bám sát hoàn toàn 100% nội dung kiến thức từ tài liệu nguồn dưới đây. Không tự chế kiến thức ngoài nguồn.
-                       - CÔNG THỨC TOÁN/HÓA HỌC: Trình bày rõ phương trình phản ứng cân bằng (ví dụ: viết rõ chỉ số dạng H2O, CO2, Fe2(SO4)3 hoặc biểu thức toán).
-                       - BIỂU BẢNG: Phần so sánh hoặc phiếu học tập phải dùng bảng định dạng Markdown bằng ký tự '|' để chuyển sang Word.
-                       - HÌNH ẢNH MINH HỌA: Tại các bước lý thuyết phù hợp, hãy chèn chính xác dòng chữ dòng đơn là "[Hình ảnh minh họa]" để hệ thống nhúng ảnh từ file gốc.
+                    YÊU CẦU CẤU TRÚC PHỤ LỤC IV CÔNG VĂN 5512/BGDĐT:
+                    I. MỤC TIÊU (Bắt buộc chia nhỏ thành đúng 4 đề mục con sau):
+                       1. Kiến thức
+                       2. Năng lực (Bao gồm Năng lực chung và Năng lực đặc thù của môn học)
+                       3. Năng lực số và AI (Thiết kế các mục tiêu về việc học sinh biết ứng dụng thiết bị công nghệ và công cụ AI vào bài học)
+                       4. Phẩm chất (Chuyển đổi từ mục số 3 cũ thành mục 4)
+                    II. THIẾT BỊ DẠY HỌC VÀ HỌC LIỆU
+                    III. TIẾN TRÌNH DẠY HỌC (Thiết kế phân bổ cho tổng số {thoi_luong}. Gồm đủ 4 Hoạt động: Hoạt động 1: Mở đầu; Hoạt động 2: Hình thành kiến thức mới; Hoạt động 3: Luyện tập; Hoạt động 4: Vận dụng).
+                       *Mỗi hoạt động phải trình bày đủ 4 mục nhỏ: a) Mục tiêu; b) Nội dung; c) Sản phẩm; d) Tổ chức thực hiện.
                     
-                    3. TÍCH HỢP NĂNG LỰC SỐ VÀ AI: Yêu cầu bắt buộc ở phần I. MỤC TIÊU (Mục 2. Năng lực đặc thù) phải viết rõ mục tiêu hình thành "Năng lực số và ứng dụng AI cho học sinh". Đồng thời, trong phần III. TIẾN TRÌNH DẠY HỌC, ở các bước Tổ chức thực hiện, phải thiết kế cụ thể hoạt động học sinh được thao tác trên máy tính, khai thác học liệu số, phần mềm mô phỏng hoặc trực tiếp sử dụng các công cụ Trí tuệ nhân tạo (AI) để phân tích, tổng hợp dữ liệu bài học.
-                    4. CĂN CỨ BỔ SUNG KHÁC: {yeu_cau_khac}
+                    YÊU CẦU ĐỊNH DẠNG VÀ CÚ PHÁP (Cực kỳ nghiêm ngặt):
+                    - BỎ TOÀN BỘ các ký tự dấu sao kép '**' ở đầu và cuối các từ hoặc các mục. Trả về văn bản sạch, không sử dụng định dạng chữ đậm dạng Markdown.
+                    - Toàn bộ các nội dung nhỏ, danh sách liệt kê bên trong bài KHÔNG ĐƯỢC DÙNG dấu sao '*' hoặc dấu chấm tròn, mà THỐNG NHẤT sử dụng duy nhất dấu gạch ngang '-' ở đầu dòng.
+                    - CÔNG THỨC TOÁN/HÓA HỌC: Trình bày rõ phương trình phản ứng cân bằng (ví dụ: viết rõ chỉ số dạng H2O, CO2, Fe2(SO4)3).
+                    - BIỂU BẢNG: Thiết kế phiếu học tập hoặc bảng so sánh bằng ký tự '|' của Markdown.
+                    - Bám sát hoàn toàn 100% nội dung kiến thức từ tài liệu nguồn dưới đây.
+                    
+                    CĂN CỨ BỔ SUNG KHÁC: {yeu_cau_khac}
                     
                     DỮ LIỆU FILE NGUỒN TÀI LIỆU THAM KHẢO:
                     {văn_bản_nguồn}
@@ -198,12 +244,10 @@ def render_khbd_section(run_ai_prompt_safe_func):
         else:
             for idx, item in enumerate(st.session_state["lich_su_khbd"]):
                 col_exp, col_del = st.columns([0.88, 0.12])
-                
                 with col_exp:
                     with st.expander(f"📚 {idx+1}. {item['Tên bài']} - Môn: {item['Môn']} (Lớp {item['Lớp']})"):
                         st.markdown(item["Nội dung"])
                         from khbd_manager import export_khbd_to_docx
-                        # SỬA LỖI KEYERROR BẰNG .GET() TRÁNH CRASH TRANG KHI ĐỌC BÀI CŨ
                         saved_docx = export_khbd_to_docx(item["Nội dung"], item.get("Kho_anh", []))
                         st.download_button(
                             label="📥 Tải lại bản Word (.docx)",
