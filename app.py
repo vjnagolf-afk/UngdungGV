@@ -25,6 +25,8 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     
     # KẾT NỐI LOGIC:
     if menu == "1. Thiết kế KHBD":
+        # Sử dụng api_key_input và run_ai_prompt_safe đã có sẵn trong app.py của thầy
+        render_khbd_section(api_key_input, run_ai_prompt_safe)
         st.header("📋 THIẾT KẾ KHBD")
         st.warning("Thầy hãy chèn hàm hiển thị KHBD của thầy vào đây.")
     elif menu == "2. Thiết kế Đề KT":
