@@ -184,7 +184,7 @@ def render_grade_manager_section():
                     st.rerun()
                 except Exception as e:
                     st.error(f"Lỗi nhập liệu: {e}")
-    conn = sqlite3.connect(DB_PATH)
+        conn = sqlite3.connect(DB_PATH)
     query = """
     SELECT s.student_code as [Mã HS], s.fullname as [Họ và tên], 
            g.kttx1 as [TX1], g.kttx2 as [TX2], g.kttx3 as [TX3], g.kttx4 as [TX4],
@@ -217,7 +217,7 @@ def render_grade_manager_section():
         # CO NHỎ CỘT ĐIỂM TX VÀ ẨN MÃ HỌC SINH TĂNG DIỆN TÍCH CHO HỌ TÊN
         col_config = {
             "STT": st.column_config.NumberColumn("STT", width="small", disabled=True),
-            "Mã HS": None, # Ẩn cột trên màn hình để tiết kiệm không gian nhưng giữ nguyên dữ liệu ngầm
+            "Mã HS": None, # Ẩn cột trên màn hình để tiết kiệm không gian
             "Họ và tên": st.column_config.TextColumn("Họ và tên", width="large", disabled=True),
             "TX1": st.column_config.TextColumn("TX1", width="small"),
             "TX2": st.column_config.TextColumn("TX2", width="small"),
@@ -225,12 +225,18 @@ def render_grade_manager_section():
             "TX4": st.column_config.TextColumn("TX4", width="small"),
             "Điểm GK": st.column_config.TextColumn("GK", width="small"),
             "Điểm CK": st.column_config.TextColumn("CK", width="small"),
-            "TBM HK": st.column_config.TextColumn("TBM", width="small", disabled=True), # Tính tự động khi nhấn nút lưu bọc trong form
+            "TBM HK": st.column_config.TextColumn("TBM", width="small", disabled=True),
             "Nhận xét": st.column_config.TextColumn("Nhận xét HK", width="medium")
         }
         
-        # BỌC BẢNG TRONG BIỂU MẪU FORM CHỐNG MẤT CON TRỎ CHUỘT KHI ĐANG NHẬP LIỆU
+        # BỌC BẢNG TRONG BIỂU MẪU FORM CHỐNG MẤT CON TRỎ CHUỘT
         with st.form("grade_entry_form", border=False):
+            # CHỨC NĂNG BỔ SUNG: TẠO NÚT LƯU ĐẦU BẢNG VỚI NỀN XANH
+            col_save_top, col_empty = st.columns([4, 6])
+            with col_save_top:
+                submitted_top = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TBM (Nút đầu bảng)", type="primary", use_container_width=True)
+            
+            # Khung bảng dữ liệu tương tác cố định Key tĩnh
             edited_df = st.data_editor(
                 df_display,
                 column_order=["STT", "Họ và tên", "TX1", "TX2", "TX3", "TX4", "Điểm GK", "Điểm CK", "TBM HK", "Nhận xét"],
@@ -239,18 +245,18 @@ def render_grade_manager_section():
                 column_config=col_config,
                 hide_index=True,
                 height=520,
-                key="stable_grade_editor" # Đặt Key tĩnh cố định cấu trúc bảng
+                key="stable_grade_editor" 
             )
             
             st.markdown("<br>", unsafe_allow_html=True)
-            # NÚT LƯU CHỐT SẼ XỬ LÝ TOÀN BỘ LOGIC QUY ĐỔI SỐ THẬP PHÂN VÀ TÍNH TRUNG BÌNH MÔN MỘT LƯỢT ĐỂ TRÁNH RESET CON TRỎ
-            submitted = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TOÀN BỘ TBM LỚP", type="primary", use_container_width=True)
+            submitted_bottom = st.form_submit_button("💾 LƯU ĐIỂM & TÍNH TBM (Nút cuối bảng)", type="primary", use_container_width=True)
             
-        if submitted:
+        # THỰC THI LOGIC KHI BẤM NÚT LƯU TRÊN HOẶC LƯU DƯỚI
+        if submitted_top or submitted_bottom:
             conn = sqlite3.connect(DB_PATH)
             cursor = conn.cursor()
             for idx, row in edited_df.iterrows():
-                ma_hs = df_display.iloc[idx]["Mã HS"] # Trích xuất mã HS từ khung bộ nhớ gốc an toàn
+                ma_hs = df_display.iloc[idx]["Mã HS"]
                 
                 # Thực hiện quy đổi định dạng số thông minh 88 -> 8.8
                 tx1 = parse_score_smart(row["TX1"])
@@ -280,7 +286,6 @@ def render_grade_manager_section():
         output = io.BytesIO()
         with pd.ExcelWriter(output, engine='openpyxl') as writer:
             export_df = edited_df.drop(columns=["STT"]) 
-            # Phục hồi cột Mã HS chạy ngầm để file Excel xuất ra đầy đủ thông tin chuẩn SMAS
             export_df.insert(0, "Mã học sinh", df_display["Mã HS"])
             export_df.to_excel(writer, index=False, sheet_name=f"{selected_class}")
             
@@ -293,3 +298,4 @@ def render_grade_manager_section():
         )
     else:
         st.info("ℹ️ Chưa có dữ liệu học sinh. Vui lòng tải file SMAS (.xlsx) lên để đồng bộ.")
+
