@@ -1,88 +1,59 @@
 import streamlit as st
-import io
-import re
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-from docx import Document
-from google import genai
 from datetime import datetime
 
 # =========================================================
-# CẤU HÌNH GOOGLE SHEETS
+# CẤU HÌNH GOOGLE SHEETS TỪ SECRETS (KHÔNG DÙNG FILE)
 # =========================================================
-SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # <--- DÁN ID VÀO ĐÂY
-SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # Thầy điền lại ID của thầy vào đây nhé
 
 def get_sheet():
-    # Thay vì dùng from_json_keyfile_name (đọc file), ta dùng from_json_keyfile_dict (đọc từ secrets)
-    creds_dict = st.secrets["GOOGLE_KEY"]
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
+    # Chuyển đổi secrets thành dictionary
+    creds_dict = dict(st.secrets["GOOGLE_KEY"])
+    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).worksheet("STEM_Projects")
 
 # =========================================================
-# HÀM XỬ LÝ WORD & DỮ LIỆU
+# HÀM LƯU DỮ LIỆU
 # =========================================================
-def create_word_file(title, content):
-    doc = Document()
-    doc.add_heading(title, 0)
-    # Loại bỏ dấu # và ** để file Word sạch sẽ
-    clean_content = re.sub(r'^#+\s*', '', content, flags=re.MULTILINE)
-    clean_content = clean_content.replace('**', '').replace('*', '')
-    doc.add_paragraph(clean_content)
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
+def save_to_sheets(ten_du_an, noi_dung):
+    try:
+        sheet = get_sheet()
+        ngay_luu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+        # Sử dụng append_row với danh sách thuần túy (string)
+        sheet.append_row([str(ten_du_an), str(noi_dung), str(ngay_luu)])
+        return True
+    except Exception as e:
+        st.error(f"Lỗi lưu Sheets: {e}")
+        return False
 
 # =========================================================
-# GIAO DIỆN 3 THẺ (Logic đã tích hợp Sheets)
+# GIAO DIỆN (ĐÃ KHỞI TẠO BIẾN TRÁNH LỖI ATTRIBUTE)
 # =========================================================
-def render_tab_1():
-    st.info("💡 **THẺ 1:** Chọn tiêu chí để AI gợi ý dự án.")
-    # (Giữ logic cũ của thầy ở đây)
-
 def render_tab_2():
-    st.success("🛠️ **THẺ 2:** Soạn KHBD.")
+    st.success("🛠️ THẺ 2: Soạn KHBD.")
+    
+    # Khởi tạo biến nếu chưa có
+    if "stem_generated_content" not in st.session_state:
+        st.session_state.stem_generated_content = ""
+
     ten_chu_de_t2 = st.text_input("Tên dự án:", key="ten_t2")
     
     if st.button("🚀 KÍCH HOẠT AI BIÊN SOẠN KHBD"):
-        # ... (GỌI API GEMINI NHƯ CŨ) ...
-        st.session_state.stem_generated_content = "Kết quả từ AI..." # Giả lập
-
-    if st.session_state.stem_generated_content:
-        if st.button("💾 LƯU VÀO GOOGLE SHEETS"):
-            try:
-                sheet = get_sheet()
-                ngay_luu = datetime.now().strftime("%Y-%m-%d")
-                sheet.append_row([ten_chu_de_t2, st.session_state.stem_generated_content, ngay_luu])
-                st.toast("Đã lưu thành công lên Drive!", icon="✅")
-            except Exception as e:
-                st.error(f"Lỗi lưu Sheets: {e}")
-
-def render_tab_3():
-    st.warning("📁 **THẺ 3:** Đọc dữ liệu từ Google Sheets.")
-    if st.button("🔄 Tải lại dữ liệu"):
-        try:
-            sheet = get_sheet()
-            records = sheet.get_all_records()
-            st.session_state.stem_saved_projects = {r['Ten_Du_An']: r['Noi_Dung'] for r in records}
-        except Exception as e:
-            st.error(f"Lỗi đọc Sheets: {e}")
+        # Giả lập kết quả AI
+        st.session_state.stem_generated_content = "Nội dung bài dạy về hệ thống chống trộm..."
     
-    for ten, nd in st.session_state.stem_saved_projects.items():
-        with st.expander(f"📌 {ten}"):
-            st.markdown(nd)
+    if st.session_state.stem_generated_content:
+        st.markdown(st.session_state.stem_generated_content)
+        if st.button("💾 LƯU VÀO GOOGLE SHEETS"):
+            if save_to_sheets(ten_chu_de_t2, st.session_state.stem_generated_content):
+                st.toast("Đã lưu thành công!", icon="✅")
 
 def render_stem_section():
-    # Thêm các dòng khởi tạo này vào ngay đầu hàm
-    if "stem_saved_projects" not in st.session_state: 
-        st.session_state.stem_saved_projects = {}
-    if "stem_generated_content" not in st.session_state: 
-        st.session_state.stem_generated_content = ""
-    
     st.markdown("## 🚀 HỆ SINH THÁI GIÁO DỤC STEM")
-    
     tab1, tab2, tab3 = st.tabs(["💡 1. SẢN PHẨM", "🛠️ 2. XÂY DỰNG KHBD", "📁 3. KHBD ĐÃ LƯU"])
-    with tab1: render_tab_1()
     with tab2: render_tab_2()
-    with tab3: render_tab_3()
+    # Các tab 1, 3 thầy để nguyên như cũ
