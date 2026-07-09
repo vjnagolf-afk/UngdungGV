@@ -66,8 +66,8 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     table = doc.add_table(rows=1, cols=5)
     table.style = 'Table Grid'
     
-    # Thiết lập tiêu đề cột trong Word
-    hdr_cells = table.rows.cells
+    # 🌟 VÁ LỖI CÚ PHÁP: Truy cập chính xác vào hàng đầu tiên [0] của bảng
+    hdr_cells = table.rows[0].cells
     for i, header_text in enumerate(headers):
         hdr_cells[i].text = header_text
         set_cell_margins(hdr_cells[i])
@@ -82,11 +82,11 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     if isinstance(content_data, list):
         for idx, item in enumerate(content_data, 1):
             row_cells = table.add_row().cells
-            row_cells.text = str(idx)
-            row_cells.text = str(item.get("Tuan", ""))
-            row_cells.text = str(item.get("BaiHoc", ""))
-            row_cells.text = str(item.get("SoTiet", ""))
-            row_cells.text = str(item.get("ThietBi", "-"))
+            row_cells[0].text = str(idx)
+            row_cells[1].text = str(item.get("Tuan", ""))
+            row_cells[2].text = str(item.get("BaiHoc", ""))
+            row_cells[3].text = str(item.get("SoTiet", ""))
+            row_cells[4].text = str(item.get("ThietBi", "-"))
             
             # Định dạng lại phông chữ căn chỉnh ô dòng dữ liệu
             for cell in row_cells:
