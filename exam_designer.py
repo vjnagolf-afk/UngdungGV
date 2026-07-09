@@ -18,24 +18,43 @@ TAB_NAME = "DE_KT"
 
 def sync_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
     """
-    Hàm kết nối Google Sheets có bổ sung cơ chế quét mọi tên khóa dự phòng trong Secrets
+    Hàm kết nối Google Sheets tích hợp thuật toán tự động dò tìm cấu hình chứng thực trong Secrets
     """
     try:
-        # TỰ ĐỘNG QUÉT TẤT CẢ CÁC TÊN KHÓA PHỔ BIẾN
-        # Thầy có thể điền thêm tên khóa mà tab khác đang dùng vào hàm st.secrets.get dưới đây nếu có tên khác
-        creds_dict = (
-            st.secrets.get("gspread_credentials") or 
-            st.secrets.get("GSPREAD_CREDENTIALS") or 
-            st.secrets.get("google_sheet_creds") or 
-            st.secrets.get("GOOGLE_APPLICATION_CREDENTIALS")
-        )
+        creds_dict = None
         
-        # Nếu vẫn không tìm thấy bất kỳ cấu hình nào
+        # 1. KIỂM TRA CÁC TÊN KHÓA ƯU TIÊN TRƯỚC
+        priority_keys = ["gspread_credentials", "GSPREAD_CREDENTIALS", "google_sheet_creds", "google_creds"]
+        for key in priority_keys:
+            if key in st.secrets:
+                creds_dict = st.secrets[key]
+                break
+                
+        # 2. THUẬT TOÁN DÒ TÌM TỰ ĐỘNG NẾU KHÔNG TÌM THẤY TRONG CÁC KHÓA ƯU TIÊN
         if creds_dict is None:
-            st.error("Không tìm thấy cấu hình chứng thực Google Sheet trong hệ thống Secrets! Thầy hãy kiểm tra lại tên khóa (Key) trong mục Secrets.")
+            for key in st.secrets.keys():
+                node = st.secrets[key]
+                # Nếu phần tử này là một dictionary/bộ cấu hình
+                if hasattr(node, "get") or isinstance(node, dict):
+                    # Kiểm tra xem có chứa thông tin đặc trưng của Service Account không
+                    if node.get("type") == "service_account" or "private_key" in node:
+                        creds_dict = node
+                        break
+                    # Kiểm tra trường hợp cấu hình lồng nhau một cấp (ví dụ: [connections])
+                    for sub_key in node.keys():
+                        sub_node = node[sub_key]
+                        if hasattr(sub_node, "get") or isinstance(sub_node, dict):
+                            if sub_node.get("type") == "service_account" or "private_key" in sub_node:
+                                creds_dict = sub_node
+                                break
+                if creds_dict: break
+
+        # 3. NẾU VẪN KHÔNG TÌM THẤY BẤT KỲ CẤU HÌNH HỢP LỆ NÀO
+        if creds_dict is None:
+            st.error("Hệ thống tự động quét toàn bộ Secrets nhưng không tìm thấy cấu hình Service Account hợp lệ nào!")
             return False
             
-        # Kết nối tới Google API bằng bộ cấu hình tìm thấy
+        # Kết nối tới Google API bằng bộ chứng thực vừa dò tìm thấy
         gc = gspread.service_account_from_dict(creds_dict)
         
         # Mở Spreadsheet bằng ID chính xác của thầy
@@ -55,6 +74,7 @@ def sync_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
     except Exception as e:
         st.warning(f"Không thể đồng bộ Google Sheet: {e}")
         return False
+
 
 # ==========================================
 # KHỐI 2: ĐỌC FILE TÀI LIỆU & VẼ ĐỒ THỊ
