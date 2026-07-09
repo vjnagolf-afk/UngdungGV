@@ -58,7 +58,6 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     table = doc.add_table(rows=1, cols=8)
     table.style = 'Table Grid'
     
-    # 🌟 VÁ LỖI CÚ PHÁP: Gọi chính xác hàng đầu tiên rows[0] để lấy cells tiêu đề
     hdr_cells = table.rows[0].cells
     for i, header_text in enumerate(headers):
         hdr_cells[i].text = header_text
@@ -104,6 +103,52 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
+
+# --- HÀM XUẤT FILE EXCEL MẪU 8 CỘT (ĐÃ VÁ LỖI CỘT TRONG OPENPYXL) ---
+def export_plan_to_excel(teacher_name, subject_name, content_data):
+    output = io.BytesIO()
+    raw_df = pd.DataFrame(content_data)
+    df = pd.DataFrame({
+        "STT": range(1, len(raw_df) + 1),
+        "Tiết CT": raw_df.get("TietCT", range(1, len(raw_df) + 1)),
+        "Bài học": raw_df.get("BaiHoc", ""),
+        "Số tiết": raw_df.get("SoTiet", ""),
+        "Thời điểm": raw_df.get("ThoiDiem", ""),
+        "Yêu cầu cần đạt": raw_df.get("YeuCauCanDat", ""),
+        "Thiết bị": raw_df.get("ThietBi", ""),
+        "Địa điểm dạy học": raw_df.get("DiaDiem", "Lớp học")
+    })
+    with pd.ExcelWriter(output, engine='openpyxl') as writer:
+        workbook = writer.book
+        worksheet = workbook.create_sheet(title="Kế hoạch dạy học", index=0)
+        writer.sheets["Kế hoạch dạy học"] = worksheet
+        worksheet["A1"] = "I. KẾ HOẠCH DẠY HỌC"
+        worksheet["A2"] = f"1. KHDH MÔN {subject_name.upper()}"
+        df.to_excel(writer, sheet_name="Kế hoạch dạy học", startrow=3, index=False)
+        
+        # 🌟 VÁ LỖI TẬN GỐC: Trích xuất ký tự chữ của cột từ ô đầu tiên của Tuple col
+        for col in worksheet.columns:
+            max_len = max(len(str(cell.value or '')) for cell in col)
+            col_letter = col[0].column_letter # <-- Sửa từ col.column_letter thành col[0].column_letter
+            worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
+    return output.getvalue()
+
+# --- HÀM TRÍCH XUẤT CHỮ TỪ FILE TÀI LIỆU ---
+def extract_text_from_file(uploaded_file):
+    if uploaded_file is None:
+        return ""
+    file_name = uploaded_file.name
+    try:
+        if file_name.endswith(".txt"):
+            return uploaded_file.read().decode("utf-8")
+        elif file_name.endswith(".docx"):
+            doc = docx.Document(uploaded_file)
+            return "\n".join([p.text for p in doc.paragraphs])
+        elif file_name.endswith(".pdf"):
+            return "Nội dung tệp PDF đính kèm: " + str(uploaded_file.name)
+    except Exception as e:
+        return f"Không thể đọc file: {str(e)}"
+    return ""
 
 # --- HÀM XUẤT FILE EXCEL MẪU 8 CỘT ---
 def export_plan_to_excel(teacher_name, subject_name, content_data):
