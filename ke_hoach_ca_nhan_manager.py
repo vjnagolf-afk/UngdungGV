@@ -174,17 +174,19 @@ def render_personal_plan(run_ai_handler=None):
         col_t, col_s = st.columns(2)
         t_name = col_t.text_input("Họ và tên Giáo viên giảng dạy:", placeholder="Ví dụ: Thầy Lê Hồng Dưỡng", key="plan_txt_t_name_v8")
         
-        # 🌟 CẬP NHẬT TÍNH NĂNG MỚI: Tích hợp đầy đủ danh mục môn học Chương trình GDPT 2018
+        # 🌟 NÂNG CẤP MENU MÔN HỌC: Bao gồm cả môn chung tích hợp và các phân môn con độc lập
         danh_sach_mon_hoc = [
             "Toán học", 
             "Ngữ văn", 
             "Tiếng Anh", 
             "Giáo dục công dân", 
+            "Khoa học tự nhiên (Xây dựng kế hoạch CHUNG)", # <-- Tùy chọn làm KHDH chung toàn môn
             "Khoa học tự nhiên (Phân môn Vật lí)", 
             "Khoa học tự nhiên (Phân môn Hóa học)", 
             "Khoa học tự nhiên (Phân môn Sinh học)", 
+            "Lịch sử và Địa lí (Xây dựng kế hoạch CHUNG)", # <-- Tùy chọn làm KHDH chung toàn môn
             "Lịch sử và Địa lí (Phân môn Lịch sử)", 
-            "Lịch sử và Địa lí (Phân môn Địa lý)", 
+            "Lịch sử và Địa lí (Phân môn Địa lí)", 
             "Công nghệ", 
             "Tin học", 
             "Giáo dục thể chất", 
