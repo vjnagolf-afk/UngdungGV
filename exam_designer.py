@@ -18,17 +18,24 @@ TAB_NAME = "DE_KT"
 
 def sync_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
     """
-    Hàm kết nối Google Sheets có bổ sung cơ chế quét tìm key thông minh
+    Hàm kết nối Google Sheets có bổ sung cơ chế quét mọi tên khóa dự phòng trong Secrets
     """
     try:
-        # Tự động quét tìm key bất kể thầy viết hoa hay viết thường trong Secrets
-        creds_dict = st.secrets.get("gspread_credentials", st.secrets.get("GSPREAD_CREDENTIALS", None))
+        # TỰ ĐỘNG QUÉT TẤT CẢ CÁC TÊN KHÓA PHỔ BIẾN
+        # Thầy có thể điền thêm tên khóa mà tab khác đang dùng vào hàm st.secrets.get dưới đây nếu có tên khác
+        creds_dict = (
+            st.secrets.get("gspread_credentials") or 
+            st.secrets.get("GSPREAD_CREDENTIALS") or 
+            st.secrets.get("google_sheet_creds") or 
+            st.secrets.get("GOOGLE_APPLICATION_CREDENTIALS")
+        )
         
+        # Nếu vẫn không tìm thấy bất kỳ cấu hình nào
         if creds_dict is None:
-            st.error("Không tìm thấy gspread_credentials trong hệ thống Secrets!")
+            st.error("Không tìm thấy cấu hình chứng thực Google Sheet trong hệ thống Secrets! Thầy hãy kiểm tra lại tên khóa (Key) trong mục Secrets.")
             return False
             
-        # Kết nối tới Google API
+        # Kết nối tới Google API bằng bộ cấu hình tìm thấy
         gc = gspread.service_account_from_dict(creds_dict)
         
         # Mở Spreadsheet bằng ID chính xác của thầy
@@ -44,9 +51,11 @@ def sync_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
         # Thêm dữ liệu đề thi mới vào dòng cuối cùng
         worksheet.append_row([ten_de, mon, khoi, thoi_gian, noi_dung])
         return True
+        
     except Exception as e:
         st.warning(f"Không thể đồng bộ Google Sheet: {e}")
         return False
+
 # ==========================================
 # KHỐI 2: ĐỌC FILE TÀI LIỆU & VẼ ĐỒ THỊ
 # ==========================================
