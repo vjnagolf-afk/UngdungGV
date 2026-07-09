@@ -21,7 +21,6 @@ def render_nam_hoc_tab():
     
     col_rl, col_mdc = st.columns(2)
     with col_rl:
-        # Đã sửa lỗi "with" thành "với"
         st.text_area("Rèn luyện trong nhà trường", value="+ Xây dựng uy tín với học sinh, với đồng nghiệp, với cha mẹ học sinh và xã hội về chuyên môn, nghiệp vụ. Tư cách đạo đức, tác phong sư phạm mẫu mực trong sinh hoạt.", height=120, key="nam_hoc_ren_luyen")
     with col_mdc:
         st.text_area("Mục đích yêu cầu chung", value="- Luôn kính trọng người trên, thầy cô giáo, cán bộ và nhân viên nhà trường; thương yêu và giúp đỡ nhau, có ý thức xây dựng tập thể, đoàn kết với các bạn, được các bạn tin yêu.", height=120, key="nam_hoc_muc_dich_chung")
@@ -103,7 +102,7 @@ def render_thang_tab(run_ai_prompt_safe=None):
     st.write("---")
     ghi_chu_them = st.text_input("Yêu cầu bổ sung đặc biệt cho tháng này (nếu có):", placeholder="Ví dụ: Tập trung nề nếp thi đua...", key="txt_ghi_chu_them")
     
-    # Khởi tạo key trực tiếp thay vì gán value rườm rà
+    # Khởi tạo khóa bộ nhớ chính của text_area trong session_state để lưu văn bản xem trước ổn định
     if "ta_main_editor" not in st.session_state:
         st.session_state["ta_main_editor"] = ""
         
@@ -127,21 +126,22 @@ def render_thang_tab(run_ai_prompt_safe=None):
                 Ghi chú từ GV: {ghi_chu_them}
                 """
                 response = run_ai_prompt_safe(prompt_he_thong)
-                # Cập nhật trực tiếp vào key của widget thay vì biến trung gian
+                # ĐỒNG BỘ TRỰC TIẾP: Ghi đè thẳng vào KEY của text_area giúp cập nhật màn hình lập tức
                 st.session_state["ta_main_editor"] = response
         else:
             st.info("Hệ thống kết nối AI đang được đồng bộ...")
 
     st.write("#### 📝 KHUNG VĂN BẢN KẾ HOẠCH THÁNG (Xem trước & Sửa đổi)")
     
-    # Loại bỏ tham số value, chỉ sử dụng key để Streamlit tự động liên kết State
+    # Text area lấy trực tiếp dữ liệu từ key="ta_main_editor"
     edited_text = st.text_area(
         label="Nội dung kế hoạch công tác (Nhấn vào để sửa đổi):",
         height=450,
         key="ta_main_editor"
     )
     
-    if st.session_state["ta_main_editor"].strip():
+    # Hiển thị nút tải Word khi vùng xem trước có nội dung văn bản
+    if edited_text.strip():
         st.write("")
         file_name_doc = f"Ke_hoach_chu_nhiem_{selected_lop}_{selected_thang.replace('/', '_')}.docx"
         word_file_bytes = export_to_word(f"KẾ HOẠCH CHỦ NHIỆM LỚP {selected_lop} - {selected_thang.upper()}", edited_text)
@@ -153,18 +153,3 @@ def render_thang_tab(run_ai_prompt_safe=None):
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             key="btn_download_word"
         )
-import streamlit as st
-from chu_nhiem_nam_hoc import render_nam_hoc_tab
-from chu_nhiem_thang import render_thang_tab
-
-def render_chu_nhiem_section(run_ai_prompt_safe=None):
-    tab_tong_quan, tab_hang_thang = st.tabs([
-        "📊 Đặc điểm tình hình & Kế hoạch năm học", 
-        "📅 Kế hoạch công tác theo Tháng (AI Tự động)"
-    ])
-    
-    with tab_tong_quan:
-        render_nam_hoc_tab()
-
-    with tab_hang_thang:
-        render_thang_tab(run_ai_prompt_safe)
