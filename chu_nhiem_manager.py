@@ -31,7 +31,7 @@ def render_tab_7(run_ai_prompt_safe=None):
     with tab_hoc_sinh:
         st.write("#### 📊 Danh sách học sinh cần lưu ý & Phân công")
         
-        # Đã sửa lỗi điền đầy đủ mảng dữ liệu số thứ tự [1, 2, 3] vào cột STT dưới đây:
+        # Đã sửa lỗi điền mảng [1, 2, 3] đầy đủ cho cột STT ở dòng dưới đây:
         data = {
             "STT":,
             "Họ và tên": ["Nguyễn Văn A", "Trần Thị B", "Lê Hoàng C"],
