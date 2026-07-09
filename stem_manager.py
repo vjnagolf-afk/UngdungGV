@@ -1,32 +1,23 @@
 import streamlit as st
 import gspread
-from oauth2client.service_account import ServiceAccountCredentials
+from google.oauth2.service_account import Credentials
 from datetime import datetime
 
-# Cấu hình
-SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # Thầy nhớ kiểm tra lại ID này
-
-import json
-import tempfile
+SHEET_ID = '1QhX2fP520f9xXoP2p3W5i2123456789' # Hãy đảm bảo ID này đúng
 
 def get_sheet():
-    # 1. Lấy dữ liệu từ secrets
+    # 1. Lấy dict trực tiếp từ secrets
     creds_dict = dict(st.secrets["GOOGLE_KEY"])
     
-    # 2. Tạo một tệp tạm thời trong bộ nhớ để lưu JSON
-    with tempfile.NamedTemporaryFile(mode='w', delete=False, suffix='.json') as tmp:
-        json.dump(creds_dict, tmp)
-        tmp_path = tmp.name
+    # 2. Định nghĩa quyền truy cập
+    scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
     
-    # 3. Sử dụng đường dẫn tệp tạm thời này để xác thực
-    # Vì tệp này nằm trong bộ nhớ máy chủ, gspread sẽ đọc được mà không báo lỗi stream
-    scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_name(tmp_path, scope)
+    # 3. Sử dụng Credentials hiện đại (Không cần file, không cần luồng stream)
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    
+    # 4. Ủy quyền cho gspread
     client = gspread.authorize(creds)
-    
     return client.open_by_key(SHEET_ID).worksheet("STEM_Projects")
-
 def save_to_sheets(ten_du_an, noi_dung):
     try:
         sheet = get_sheet()
