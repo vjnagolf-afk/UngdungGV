@@ -106,7 +106,8 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     elif menu == "6. Thiết kế bài dạy STEM":
         render_stem_section()
     elif menu == "7. Kế hoạch công tác chủ nhiệm lớp":
-       render_chu_nhiem_section(lambda p: run_ai_prompt_safe(p)))
+        render_chu_nhiem_section(lambda p: run_ai_prompt_safe(p))  # Chỉ giữ 1 dấu đóng ngoặc ở cuối
+
 else:  # Phân hệ Quản lý tổ chuyên môn
     st.sidebar.markdown("### 📂 QUẢN LÝ TỔ CHUYÊN MÔN")
     menu = st.sidebar.selectbox("Nội dung quản lý", ["1. Quản lý & Phân công chuyên môn", "2. Biên bản sinh hoạt", "3. Kế hoạch cá nhân", "4. Thống kê số liệu"], label_visibility="collapsed", key="menu_ql_selectbox_v9")
