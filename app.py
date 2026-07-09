@@ -92,10 +92,67 @@ else:  # Phân hệ Quản lý tổ chuyên môn
     elif menu == "3. Kế hoạch cá nhân": 
         # ĐỒNG BỘ: Truyền hàm chạy AI an toàn vào file kế hoạch cá nhân
         render_personal_plan(lambda p: run_ai_prompt_safe(p))
-    elif menu == "4. Thống kê số liệu": 
+        elif menu == "4. Thống kê số liệu": 
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
+        
+        # --- BỔ SUNG DỮ LIỆU MẪU ĐỂ ĐI THI KHÔNG BỊ TRỐNG BIỂU ĐỒ ---
+        if not st.session_state["db_thanh_vien"]:
+            st.session_state["db_thanh_vien"] = [
+                {"Họ và tên": "Thầy Lê Hồng Dưỡng", "Phân môn chính": "Khoa học tự nhiên (Phân môn Vật lí)", "Số tiết/Tuần": 14},
+                {"Họ và tên": "Cô Nguyễn Thị Mai", "Phân môn chính": "Khoa học tự nhiên (Phân môn Hóa học)", "Số tiết/Tuần": 16},
+                {"Họ và tên": "Thầy Trần Văn Tâm", "Phân môn chính": "Khoa học tự nhiên (Phân môn Sinh học)", "Số tiết/Tuần": 12},
+                {"Họ và tên": "Cô Lê Thị Thúy", "Phân môn chính": "Lịch sử và Địa lí (Phân môn Lịch sử)", "Số tiết/Tuần": 15},
+                {"Họ và tên": "Thầy Phạm Minh Hoàng", "Phân môn chính": "Lịch sử và Địa lí (Phân môn Địa lý)", "Số tiết/Tuần": 14},
+                {"Họ và tên": "Cô Hoàng Anh Thư", "Phân môn chính": "Toán học", "Số tiết/Tuần": 17}
+            ]
+
+        # Chuyển đổi dữ liệu danh sách thành bảng DataFrame để xử lý toán học
         df_tv = pd.DataFrame(st.session_state["db_thanh_vien"])
+        
+        # Kiểm tra điều kiện tồn tại dữ liệu chắc chắn trước khi dựng biểu đồ
         if not df_tv.empty and "Phân môn chính" in df_tv.columns:
-            st.bar_chart(df_tv["Phân môn chính"].value_counts())
+            
+            # 1. Hộp số liệu tổng quan (Metrics)
+            st.markdown("### 📌 Chỉ số tổng quan tổ chuyên môn")
+            m_col1, m_col2, m_col3 = st.columns(3)
+            
+            tong_so_gv = len(df_tv)
+            m_col1.metric(label="👥 Tổng số Giáo viên trong tổ", value=f"{tong_so_gv} Thầy/Cô")
+            
+            so_phan_mon = df_tv["Phân môn chính"].nunique()
+            m_col2.metric(label="📚 Số lượng Môn học/Phân môn", value=f"{so_phan_mon} Nhóm")
+            
+            if "Số tiết/Tuần" in df_tv.columns:
+                tong_tiet = df_tv["Số tiết/Tuần"].sum()
+                m_col3.metric(label="⏱️ Tổng số tiết định mức định kỳ / tuần", value=f"{tong_tiet} Tiết")
+            else:
+                m_col3.metric(label="⏱️ Tổng số tiết định mức định kỳ / tuần", value="0 Tiết")
+                
+            st.markdown("---")
+            
+            # 2. Khu vực xây dựng biểu đồ so sánh trực quan
+            chart_col1, chart_col2 = st.columns(2)
+            
+            # Biểu đồ 1: Số lượng giáo viên phân bổ theo từng Phân môn chính
+            with chart_col1:
+                st.markdown("##### 📈 Số lượng giáo viên theo Phân môn")
+                counts = df_tv["Phân môn chính"].value_counts()
+                st.bar_chart(counts, color="#1E3A8A")
+                
+            # Biểu đồ 2: Định mức phân bổ số tiết dạy của từng giáo viên trong tuần
+            with chart_col2:
+                st.markdown("##### ⏳ Định mức Tiết dạy/Tuần của từng Giáo viên")
+                if "Số tiết/Tuần" in df_tv.columns and "Họ và tên" in df_tv.columns:
+                    # Tạo cấu trúc DataFrame riêng để lập biểu đồ dòng kẻ hoặc cột đứng
+                    df_chart_tiet = df_tv.set_index("Họ và tên")[["Số tiết/Tuần"]]
+                    st.bar_chart(df_chart_tiet, color="#EF4444")
+                else:
+                    st.caption("Chưa có dữ liệu định mức số tiết dạy cụ thể để lập sơ đồ so sánh.")
+                    
+            # 3. Bảng danh sách chi tiết lưu trữ dưới nền hệ thống
+            st.markdown("---")
+            st.markdown("### 🗂️ Danh sách trích xuất dữ liệu chi tiết")
+            st.dataframe(df_tv, use_container_width=True, hide_index=True)
+            
         else:
             st.warning("⚠️ Chưa có dữ liệu thành viên hoặc thiếu cột 'Phân môn chính' để lập biểu đồ.")
