@@ -14,13 +14,10 @@ from bien_ban_manager import render_meeting_minutes
 from ke_hoach_ca_nhan_manager import render_personal_plan 
 
 # --- 2. CẤU HÌNH ĐỌC API KEY TỰ ĐỘNG TỪ TRONG SECRETS ---
-# Thử đọc key hệ thống, nếu chưa có thì gán chuỗi rỗng
 API_KEY_HE_THONG = st.secrets.get("GEMINI_API_KEY", "")
 
 def run_ai_prompt_safe(prompt_text):
-    # Ưu tiên lấy key từ mục Secrets của Manage App trước
     api_key = API_KEY_HE_THONG
-    
     if not api_key:
         return "⚠️ Hệ thống chưa được cấu hình API Key trong mục Secrets. Vui lòng liên hệ Admin.", "error"
     try:
@@ -56,34 +53,30 @@ st.caption("Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường TH
 st.markdown("---")
 
 ## ==================================================================================
-# --- THANH ĐIỀU HƯỚNG SỬA LỖI TRÙNG ID (DÀNH CHO FILE APP.PY) ---
-# ==================================================================================
+# --- THANH ĐIỀU HƯỚNG TỔNG (ĐÃ VÁ LỖI TRÙNG KEY ĐỘC NHẤT) ---
+## ==================================================================================
 st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
 
-# 💥 VÁ LỖI TẬN GỐC: Ép khóa key tĩnh độc lập để ngăn chặn lỗi DuplicateWidgetID khi gọi AI ngầm
 phan_he = st.sidebar.radio(
     "Chọn phân hệ:",
     ["Trợ lý Giảng dạy (Giáo viên)", "Trợ lý Quản lý (Tổ chuyên môn)"],
     label_visibility="collapsed",
-    key="app_main_sidebar_navigation_key_v1" # <-- Khóa định danh độc nhất
+    key="app_main_sidebar_navigation_root_key_2026_v9" # <-- Sửa đổi thành key độc nhất vô nhị
 )
 
 # --- 5. XỬ LÝ ĐIỀU HƯỚNG ---
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     st.sidebar.markdown("### 🛠️ CHỨC NĂNG GIÁO VIÊN")
-    menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB"], label_visibility="collapsed")
+    menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
     
-    # 💡 ĐÃ LOẠI BỎ Ô NHẬP API KEY THỦ CÔNG (Vì hệ thống đã chạy ngầm tự động bảo mật)
     st.sidebar.success("🔑 Đã kết nối API Key hệ thống từ Manage App.")
     
     if menu == "1. Thiết kế KHBD": 
-        # Gọi hàm và truyền hàm AI ngắn gọn hơn (Không cần truyền biến api_key thủ công)
         render_khbd_section(lambda p: run_ai_prompt_safe(p))
     elif menu == "2. Thiết kế Đề KT": 
         render_exam_designer_section("", lambda p: run_ai_prompt_safe(p))
     elif menu == "3. Đánh giá HS": 
-        # Gọi phân hệ thiết kế Rubric từ file danh_gia_manager.py
         render_assessment_section(lambda p: run_ai_prompt_safe(p))
     elif menu == "4. Quản lý điểm (SMAS)": 
         render_grade_manager_section()
@@ -92,11 +85,13 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
 
 else:  # Phân hệ Quản lý tổ chuyên môn
     st.sidebar.markdown("### 📂 QUẢN LÝ TỔ CHUYÊN MÔN")
-    menu = st.sidebar.selectbox("Nội dung quản lý", ["1. Quản lý & Phân công chuyên môn", "2. Biên bản sinh hoạt", "3. Kế hoạch cá nhân", "4. Thống kê số liệu"], label_visibility="collapsed")
+    menu = st.sidebar.selectbox("Nội dung quản lý", ["1. Quản lý & Phân công chuyên môn", "2. Biên bản sinh hoạt", "3. Kế hoạch cá nhân", "4. Thống kê số liệu"], label_visibility="collapsed", key="menu_ql_selectbox_v9")
     
     if menu == "1. Quản lý & Phân công chuyên môn": render_org_section()
     elif menu == "2. Biên bản sinh hoạt": render_meeting_minutes(lambda p: run_ai_prompt_safe(p))
-    elif menu == "3. Kế hoạch cá nhân": render_personal_plan()
+    elif menu == "3. Kế hoạch cá nhân": 
+        # ĐỒNG BỘ: Truyền hàm chạy AI an toàn vào file kế hoạch cá nhân
+        render_personal_plan(lambda p: run_ai_prompt_safe(p))
     elif menu == "4. Thống kê số liệu": 
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
         df_tv = pd.DataFrame(st.session_state["db_thanh_vien"])
