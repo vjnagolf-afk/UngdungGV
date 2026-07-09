@@ -92,36 +92,53 @@ else:  # Phân hệ Quản lý tổ chuyên môn
         render_meeting_minutes(lambda p: run_ai_prompt_safe(p))
     elif menu == "3. Kế hoạch cá nhân": 
         render_personal_plan(lambda p: run_ai_prompt_safe(p))
-    elif menu == "4. Thống kê số liệu": 
+        elif menu == "4. Thống kê số liệu": 
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
         
-        # Chuyển đổi bộ nhớ từ mục 1 sang bảng cấu trúc DataFrame
-        df_tv = pd.DataFrame(st.session_state["db_thanh_vien"])
+        # --- 🌟 BỘ THU THẬP VÀ ĐỒNG BỘ DỮ LIỆU TỪ MỤC 1 ---
+        raw_data = st.session_state.get("db_thanh_vien", [])
+        df_tv = pd.DataFrame(raw_data)
         
-        # Nếu chưa có ai nhập dữ liệu ở mục 1, giao diện hiển thị tùy chọn nạp dữ liệu demo để đi thi
+        # --- 🌟 TRÌNH TỰ ĐỘNG CHUẨN HÓA CỘT (QUÉT MỌI BIẾN THỂ TÊN CỘT DO FILE MỤC 1 ĐẶT) ---
+        if not df_tv.empty:
+            # 1. Chuẩn hóa cột Họ tên
+            for col in ["Họ tên", "Họ tên giáo viên", "Giáo viên thực hiện", "Họ và Tên", "Tên"]:
+                if col in df_tv.columns and "Họ và tên" not in df_tv.columns:
+                    df_tv = df_tv.rename(columns={col: "Họ và tên"})
+            
+            # 2. Chuẩn hóa cột Phân môn
+            for col in ["Môn học / Phân môn phụ trách", "Môn giảng dạy", "Phân môn", "Môn", "Môn phụ trách"]:
+                if col in df_tv.columns and "Phân môn chính" not in df_tv.columns:
+                    df_tv = df_tv.rename(columns={col: "Phân môn chính"})
+            
+            # 3. Chuẩn hóa cột Số tiết
+            for col in ["Số tiết", "Số tiết dạy", "Định mức tiết", "Số tiết / Tuần", "Số tiết/tuần"]:
+                if col in df_tv.columns and "Số tiết/Tuần" not in df_tv.columns:
+                    df_tv = df_tv.rename(columns={col: "Số tiết/Tuần"})
+        
+        # --- LUỒNG KIỂM TRA VÀ HIỂN THỊ ---
+        # Nếu thực sự trống hoàn toàn (chưa bấm lưu ai ở mục 1), mới hiện cảnh báo/nút nạp mẫu
         if df_tv.empty:
             st.warning("ℹ️ Hiện tại chưa có dữ liệu giáo viên nào được nhập từ phân hệ '1. Quản lý & Phân công chuyên môn'.")
             
-            # Thiết kế nút bấm kích hoạt dữ liệu giả lập thông minh phục vụ chấm thi nhanh
             if st.button("💡 Nạp nhanh dữ liệu mẫu để thử nghiệm biểu đồ", type="primary", use_container_width=True):
                 st.session_state["db_thanh_vien"] = [
                     {"Họ và tên": "Thầy Lê Hồng Dưỡng", "Phân môn chính": "Khoa học tự nhiên (Phân môn Vật lí)", "Số tiết/Tuần": 14},
                     {"Họ và tên": "Cô Nguyễn Thị Mai", "Phân môn chính": "Khoa học tự nhiên (Phân môn Hóa học)", "Số tiết/Tuần": 16},
-                    {"Họ và tên": "Thầy Trần Văn Tâm", "Phân môn chính": "Khoa học tự nhiên (Phân môn Sinh học)", "Số tiết/Tuần": 12},
+                    {"Thầy Trần Văn Tâm", "Phân môn chính": "Khoa học tự nhiên (Phân môn Sinh học)", "Số tiết/Tuần": 12},
                     {"Họ và tên": "Cô Lê Thị Thúy", "Phân môn chính": "Lịch sử và Địa lí (Phân môn Lịch sử)", "Số tiết/Tuần": 15},
                     {"Họ và tên": "Thầy Phạm Minh Hoàng", "Phân môn chính": "Lịch sử và Địa lí (Phân môn Địa lý)", "Số tiết/Tuần": 14}
                 ]
-                st.success("🎉 Đã nạp dữ liệu thử nghiệm! Hệ thống đang xử lý sơ đồ biểu đồ...")
+                st.success("🎉 Đã nạp dữ liệu thử nghiệm thành công! Vui lòng chờ hệ thống dựng sơ đồ...")
                 st.rerun()
                 
-        # --- LUỒNG XỬ LÝ ĐỒNG BỘ DỮ LIỆU THỰC TẾ TỪ MỤC 1 ---
         else:
-            # Tự động đồng bộ hóa tên cột nếu ở mục 1 gõ lệch chữ
-            if "Phân môn chính" not in df_tv.columns and "Môn học / Phân môn phụ trách" in df_tv.columns:
-                df_tv = df_tv.rename(columns={"Môn học / Phân môn phụ trách": "Phân môn chính"})
-            if "Số tiết/Tuần" not in df_tv.columns and "Số tiết" in df_tv.columns:
-                df_tv = df_tv.rename(columns={"Số tiết": "Số tiết/Tuần"})
-                
+            # Điền dữ liệu trống phòng trường hợp người dùng bỏ sót khi nhập ở mục 1
+            if "Phân môn chính" not in df_tv.columns: df_tv["Phân môn chính"] = "Chưa phân môn"
+            if "Họ và tên" not in df_tv.columns: df_tv["Họ và tên"] = "Giáo viên ẩn danh"
+            df_tv["Phân môn chính"] = df_tv["Phân môn chính"].fillna("Chưa phân môn")
+            df_tv["Họ và tên"] = df_tv["Họ và tên"].fillna("Giáo viên ẩn danh")
+            
             # 1. Hộp số liệu tổng quan tự động tính toán (Metrics)
             st.markdown("### 📌 Chỉ số tổng quan tổ chuyên môn")
             m_col1, m_col2, m_col3 = st.columns(3)
@@ -129,11 +146,10 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             tong_so_gv = len(df_tv)
             m_col1.metric(label="👥 Tổng số Giáo viên trong tổ", value=f"{tong_so_gv} Thầy/Cô")
             
-            so_phan_mon = df_tv["Phân môn chính"].nunique() if "Phân môn chính" in df_tv.columns else 0
+            so_phan_mon = df_tv["Phân môn chính"].nunique()
             m_col2.metric(label="📚 Số lượng Môn học/Phân môn", value=f"{so_phan_mon} Nhóm")
             
             if "Số tiết/Tuần" in df_tv.columns:
-                df_tv["Phân môn chính"] = df_tv["Phân môn chính"].fillna("Chưa phân môn")
                 df_tv["Số tiết/Tuần"] = pd.to_numeric(df_tv["Số tiết/Tuần"], errors='coerce').fillna(0)
                 tong_tiet = int(df_tv["Số tiết/Tuần"].sum())
                 m_col3.metric(label="⏱️ Tổng số tiết định mức / tuần", value=f"{tong_tiet} Tiết")
@@ -148,19 +164,14 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             # Biểu đồ 1: Số lượng giáo viên phân bổ theo từng Phân môn chính
             with chart_col1:
                 st.markdown("##### 📈 Số lượng giáo viên theo Phân môn")
-                if "Phân môn chính" in df_tv.columns:
-                    counts = df_tv["Phân môn chính"].value_counts()
-                    st.bar_chart(counts, color="#1E3A8A")
-                else:
-                    st.caption("Thiếu dữ liệu cột 'Phân môn chính' để lập sơ đồ.")
+                counts = df_tv["Phân môn chính"].value_counts()
+                st.bar_chart(counts, color="#1E3A8A")
                 
             # Biểu đồ 2: Định mức phân bổ số tiết dạy của từng giáo viên trong tuần
             with chart_col2:
                 st.markdown("##### ⏳ Định mức Tiết dạy/Tuần của từng Giáo viên")
-                col_name_check = "Họ và tên" if "Họ và tên" in df_tv.columns else (df_tv.columns[0] if len(df_tv.columns) > 0 else "")
-                
-                if "Số tiết/Tuần" in df_tv.columns and col_name_check:
-                    df_chart_tiet = df_tv.set_index(col_name_check)[["Số tiết/Tuần"]]
+                if "Số tiết/Tuần" in df_tv.columns:
+                    df_chart_tiet = df_tv.set_index("Họ và tên")[["Số tiết/Tuần"]]
                     st.bar_chart(df_chart_tiet, color="#EF4444")
                 else:
                     st.caption("Chưa có trường số liệu định mức số tiết dạy cụ thể của giáo viên.")
@@ -169,5 +180,3 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             st.markdown("---")
             st.markdown("### 🗂️ Danh sách trích xuất dữ liệu chi tiết")
             st.dataframe(df_tv, use_container_width=True, hide_index=True)
-
-
