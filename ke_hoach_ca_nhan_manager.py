@@ -62,7 +62,7 @@ def render_personal_plan(run_ai_handler=None):
     if "ai_plan_output" not in st.session_state:
         st.session_state["ai_plan_output"] = ""
 
-    with st.form("form_personal_plan_fixed_final_v8", border=False):
+        with st.form("form_personal_plan_fixed_final_v8", border=False):
         col_t, col_s = st.columns(2)
         t_name = col_t.text_input("Họ và tên Giáo viên giảng dạy:", placeholder="Ví dụ: Thầy Lê Hồng Dưỡng", key="plan_txt_t_name_v8")
         s_name = col_s.selectbox("Môn học / Phân môn phụ trách:", ["Khoa học tự nhiên (Vật lý)", "Khoa học tự nhiên (Sinh học)", "Khoa học tự nhiên (Hóa học)", "Toán học", "Ngữ văn", "GDTC"], key="plan_sb_s_name_v8")
@@ -72,8 +72,15 @@ def render_personal_plan(run_ai_handler=None):
         st.markdown("**💬 Các tiêu chí đặc thù hoặc lưu ý phân bổ tiết (Nếu có):**")
         note_plan = st.text_area("Yêu cầu bổ sung cho AI:", placeholder="Ví dụ: Phân bổ chi tiết số tiết cho chương Tốc độ ở vật lý 7 học kỳ I...", label_visibility="collapsed", key="plan_ta_note_v8")
         
-        # Nút bấm chỉ kích hoạt tác lệnh khi có quyền Admin
-        run_ai_plan = st.form_submit_button(" Khởi tạo Kế hoạch bằng AI", type="primary", use_container_width=True)
+        # --- ĐƯA CẢNH BÁO VÀO TRONG FORM VÀ KHÓA NÚT NẾU KHÔNG PHẢI ADMIN ---
+        if not is_admin:
+            st.warning("⚠️ Chức năng Lập kế hoạch tự động bằng AI yêu cầu quyền tài khoản Tổ trưởng chuyên môn (Admin). Vui lòng xác thực mã PIN ở thanh bên (Sidebar).")
+            # Khóa nút bấm nếu chưa nhập đúng mã PIN
+            run_ai_plan = st.form_submit_button(" Khởi tạo Kế hoạch bằng AI", type="primary", use_container_width=True, disabled=True)
+        else:
+            # Mở nút bấm bình thường khi đã xác thực Admin thành công
+            run_ai_plan = st.form_submit_button(" Khởi tạo Kế hoạch bằng AI", type="primary", use_container_width=True, disabled=False)
+
         
     if not is_admin:
         st.warning("⚠️ Chức năng Lập kế hoạch tự động bằng AI yêu cầu quyền tài khoản Tổ trưởng chuyên môn (Admin). Vui lòng xác thực mã PIN ở thanh bên (Sidebar).")
