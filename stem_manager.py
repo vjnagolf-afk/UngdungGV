@@ -14,7 +14,9 @@ SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # <--- DÁN ID VÀO Đ
 SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 
 def get_sheet():
-    creds = ServiceAccountCredentials.from_json_keyfile_name('google_key.json', SCOPE)
+    # Thay vì dùng from_json_keyfile_name (đọc file), ta dùng from_json_keyfile_dict (đọc từ secrets)
+    creds_dict = st.secrets["GOOGLE_KEY"]
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, SCOPE)
     client = gspread.authorize(creds)
     return client.open_by_key(SHEET_ID).worksheet("STEM_Projects")
 
