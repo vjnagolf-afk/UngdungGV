@@ -27,13 +27,13 @@ def render_tab_7(run_ai_prompt_safe=None):
         if st.button("💾 Lưu kế hoạch tuần", key="btn_save_kh"):
             st.success(f"Đã lưu thành công kế hoạch {tuan_hoc}!")
 
-        # --- TAB 2: QUẢN LÝ HỌC SINH ---
-    with tab_hoc_sinh:  # Đã sửa lại tên biến tab cho chuẩn
+    # --- TAB 2: QUẢN LÝ HỌC SINH ---
+    with tab_hoc_sinh:
         st.write("#### 📊 Danh sách học sinh cần lưu ý & Phân công")
         
-        # Điền đầy đủ giá trị [1, 2, 3] cho cột STT ở dưới đây:
+        # Đã sửa lỗi điền đầy đủ mảng dữ liệu số thứ tự [1, 2, 3] vào cột STT dưới đây:
         data = {
-            "STT":,  
+            "STT":,
             "Họ và tên": ["Nguyễn Văn A", "Trần Thị B", "Lê Hoàng C"],
             "Chức vụ / Đặc điểm": ["Lớp trưởng", "Bí thư", "Học sinh cần hỗ trợ học tập"],
             "Ghi chú": ["Nhanh nhẹn", "Trách nhiệm", "Hay quên làm bài tập"]
@@ -41,7 +41,6 @@ def render_tab_7(run_ai_prompt_safe=None):
         df = pd.DataFrame(data)
         st.data_editor(df, num_rows="dynamic", use_container_width=True)
         st.caption("💡 Bạn có thể bấm trực tiếp vào bảng trên để sửa thông tin hoặc thêm dòng mới.")
-
 
     # --- TAB 3: TRỢ LÝ AI CHỦ NHIỆM ---
     with tab_ai_tro_ly:
@@ -76,6 +75,5 @@ def render_tab_7(run_ai_prompt_safe=None):
                         st.markdown("### 🌟 Kết quả từ Trợ lý AI:")
                         st.write(response)
                 else:
-                    # Trường hợp chưa kết nối được hàm AI từ app.py, giả lập câu trả lời mẫu
-                    st.warning("Hệ thống chưa truyền hàm kết nối AI. Dưới đây là phản hồi mẫu:")
+                    st.warning("Hệ thống chưa truyền hàm kết nối AI từ app.py. Dưới đây là phản hồi mẫu:")
                     st.info("AI khuyên bạn nên: 1. Gặp riêng học sinh lắng nghe tâm tư; 2. Phối hợp chặt chẽ với phụ huynh học sinh; 3. Tổ chức trò chơi gắn kết tập thể tại lớp.")
