@@ -1,109 +1,4 @@
 import streamlit as st
-import io
-from docx import Document
-# Import phân hệ kế hoạch năm học từ file nhỏ thứ hai
-from chu_nhiem_nam_hoc import render_nam_hoc_tab
-
-def export_to_word(title, content_text):
-    """Hàm xử lý tạo file Microsoft Word .docx từ văn bản"""
-    doc = Document()
-    doc.add_heading(title, level=1)
-    for line in content_text.split("\n"):
-        doc.add_paragraph(line)
-    bio = io.BytesIO()
-    doc.save(bio)
-    return bio.getvalue()
-
-def render_thang_tab(run_ai_prompt_safe=None):
-    """Hàm chứa giao diện Kế hoạch tháng (Xử lý AI và xem trước văn bản)"""
-    st.write("#### 🛠 CẤU HÌNH THÔNG TIN CHỦ NHIỆM")
-    col_khoi, col_lop, col_thang = st.columns(3)
-    
-    with col_khoi:
-        selected_khoi = st.selectbox("Chọn Khối lớp:", ["Khối lớp 6", "Khối lớp 7", "Khối lớp 8", "Khối lớp 9"], key="sb_khoi_lop")
-    with col_lop:
-        lop_dict = {
-            "Khối lớp 6": ["6A","6B","6C","6D","6E","6F"], 
-            "Khối lớp 7": ["7A","7B","7C","7D","7E","7F"], 
-            "Khối lớp 8": ["8A","8B","8C","8D","8E","8F"], 
-            "Khối lớp 9": ["9A","9B","9C","9D","9E","9F","9G"]
-        }
-        selected_lop = st.selectbox("Chọn Lớp chủ nhiệm:", lop_dict.get(selected_khoi, ["6A"]), key="sb_lop_chu_nhiem")
-    with col_thang:
-        thang_options = [f"Tháng {i}/2026" for i in range(8, 13)] + [f"Tháng {i}/2027" for i in range(1, 6)]
-        selected_thang = st.selectbox("Chọn Tháng công tác:", thang_options, key="sb_thang_cong_tac")
-        
-    st.write("---")
-    ghi_chu_them = st.text_input("Yêu cầu bổ sung đặc biệt cho tháng này (nếu có):", placeholder="Ví dụ: Tập trung ổn định nề nếp...", key="txt_ghi_chu_them")
-    
-    # GHIM BỘ NHỚ CỐ ĐỊNH: Giải quyết lỗi ẩn/mất chữ khi chuyển tab hoặc thao tác trang
-    if "data_content_chu_nhiem_thang" not in st.session_state:
-        st.session_state["data_content_chu_nhiem_thang"] = ""
-        
-    if st.button("🚀 Khởi tạo Kế hoạch bằng AI", type="primary", key="btn_chu_nhiem_ai"):
-        if run_ai_prompt_safe is not None:
-            with st.spinner(f"AI đang phân tích và thiết lập kế hoạch {selected_thang}..."):
-                prompt_he_thong = f"""
-                Bạn là trợ lý AI cho giáo viên chủ nhiệm THCS Việt Nam. Hãy lập một bản kế hoạch công tác chủ nhiệm chi tiết cho lớp {selected_lop} trong {selected_thang}.
-                YÊU CẦU ĐẦU RA PHẢI ĐƯỢC PHÂN TÁCH DÒNG DỌC RÕ RÀNG THEO ĐÚNG CẤU TRÚC:
-                
-                KẾ HOẠCH THÁNG {selected_thang.replace('Tháng ', '')}
-                1. Chủ điểm: [Tên chủ điểm giáo dục tương ứng tháng, ví dụ Tháng 2 là 'Mừng Đảng - Mừng Xuân']
-                - [Nhiệm vụ thi đua]
-                
-                2. Nội dung hoạt động:
-                - [Đầu việc lớn]
-                
-                * KẾ HOẠCH TỪNG TUẦN:
-                - TUẦN 22: (Ghi nội dung cụ thể từng việc nề nếp, sĩ số, sinh hoạt...)
-                - TUẦN 23: (...)
-                
-                Ghi chú từ GV: {ghi_chu_them}
-                Hãy dùng dấu xuống dòng liên tục để tạo cấu trúc văn bản dọc đứng rõ ràng, dễ đọc.
-                """
-                response = run_ai_prompt_safe(prompt_he_thong)
-                st.session_state["data_content_chu_nhiem_thang"] = response
-        else:
-            st.info("Hệ thống kết nối AI đang được đồng bộ...")
-
-    st.write("#### 📝 KHUNG VĂN BẢN KẾ HOẠCH THÁNG (Xem trước & Sửa đổi)")
-    
-    # Đồng bộ bộ nhớ tạm cố định vào khung hiển thị text_area
-    edited_text = st.text_area(
-        label="Nội dung kế hoạch chi tiết (Thầy cô có thể nhấn vào để tự do chỉnh sửa bổ sung):",
-        value=st.session_state["data_content_chu_nhiem_thang"],
-        height=450,
-        key="ta_main_editor"
-    )
-    st.session_state["data_content_chu_nhiem_thang"] = edited_text
-    
-    # Xuất nút tải Word khi đã tồn tại văn bản
-    if st.session_state["data_content_chu_nhiem_thang"].strip():
-        st.write("")
-        file_name_doc = f"Ke_hoach_chu_nhiem_{selected_lop}_{selected_thang.replace('/', '_')}.docx"
-        word_file_bytes = export_to_word(f"KẾ HOẠCH CHỦ NHIỆM LỚP {selected_lop} - {selected_thang.upper()}", edited_text)
-        
-        st.download_button(
-            label="📥 Tải xuống file Word (.docx)",
-            data=word_file_bytes,
-            file_name=file_name_doc,
-            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-            key="btn_download_word"
-        )
-
-def render_chu_nhiem_section(run_ai_prompt_safe=None):
-    """Hàm đầu mối kết nối phân phối giao diện ra các thẻ Tab"""
-    tab_tong_quan, tab_hang_thang = st.tabs([
-        "📊 Đặc điểm tình hình & Kế hoạch năm học", 
-        "📅 Kế hoạch công tác theo Tháng (AI Tự động)"
-    ])
-    
-    with tab_tong_quan:
-        render_nam_hoc_tab()
-
-    with tab_hang_thang:
-        render_thang_tab(run_ai_prompt_safe)
-import streamlit as st
 
 def render_nam_hoc_tab():
     st.markdown("### 📌 I. ĐẶC ĐIỂM TÌNH HÌNH LỚP")
@@ -126,7 +21,7 @@ def render_nam_hoc_tab():
     
     col_rl, col_mdc = st.columns(2)
     with col_rl:
-        st.text_area("Rèn luyện trong nhà trường", value="+ Xây dựng uy tín với học sinh, với đồng nghiệp, với cha mẹ học sinh và xã hội về chuyên môn, nghiệp vụ. Tư cách đạo đức, tác phong sư phạm mẫu mực trong sinh hoạt.", height=120, key="nam_hoc_ren_luyen")
+        st.text_area("Rèn luyện trong nhà trường", value="+ Xây dựng uy tín with học sinh, với đồng nghiệp, với cha mẹ học sinh và xã hội về chuyên môn, nghiệp vụ. Tư cách đạo đức, tác phong sư phạm mẫu mực trong sinh hoạt.", height=120, key="nam_hoc_ren_luyen")
     with col_mdc:
         st.text_area("Mục đích yêu cầu chung", value="- Luôn kính trọng người trên, thầy cô giáo, cán bộ và nhân viên nhà trường; thương yêu và giúp đỡ nhau, có ý thức xây dựng tập thể, đoàn kết với các bạn, được các bạn tin yêu.", height=120, key="nam_hoc_muc_dich_chung")
         
@@ -158,7 +53,7 @@ def render_nam_hoc_tab():
     st.info("✨ Phân hệ 3: GIÁO DỤC NGOÀI GIỜ LÊN LỚP")
     col_gl_yc, col_gl_ct = st.columns(2)
     with col_gl_yc:
-        st.text_area("Yêu cầu (Ngoài giờ lên lớp)", value="- Kĩ năng tự nhận thức, giải quyết tình huống khó khăn trong cuộc sống.\n- Kĩ năng giao tiếp và thương thuyết (bao hàm tính tự kiềm chế).\n- Kĩ năng lựa chọn và quyết định.", height=120, key="gl_yeu_cau")
+        st.text_area("Yêu cầu (Layout Ngoài giờ lên lớp)", value="- Kĩ năng tự nhận thức, giải quyết tình huống khó khăn trong cuộc sống.\n- Kĩ năng giao tiếp và thương thuyết (bao hàm tính tự kiềm chế).\n- Kĩ năng lựa chọn và quyết định.", height=120, key="gl_yeu_cau")
     with col_gl_ct:
         st.text_area("Chỉ tiêu (Ngoài giờ lên lớp)", value="100% HS rèn kĩ năng sống cần được giáo dục và rèn luyện.", height=120, key="gl_chi_tieu")
     st.text_area("Biện pháp chính (Ngoài giờ lên lớp)", value="- Nâng cao ý thức tự nguyện, tự giác, tự chủ, phát huy tính tích cực trong mọi hoạt động.\n- Không chỉ rèn luyện cho mình mà quan tâm đến việc rèn luyện chung của cả tập thể.", height=100, key="gl_bien_phap")
@@ -173,3 +68,101 @@ def render_nam_hoc_tab():
         
     if st.button("💾 Lưu Toàn bộ Kế hoạch năm học", type="primary", key="btn_save_nam_hoc_full"):
         st.success("🎉 Đã lưu trữ thành công Kế hoạch năm học!")
+import streamlit as st
+import io
+from docx import Document
+
+def export_to_word(title, content_text):
+    doc = Document()
+    doc.add_heading(title, level=1)
+    for line in content_text.split("\n"):
+        doc.add_paragraph(line)
+    bio = io.BytesIO()
+    doc.save(bio)
+    return bio.getvalue()
+
+def render_thang_tab(run_ai_prompt_safe=None):
+    st.write("#### 🛠 CẤU HÌNH THÔNG TIN CHỦ NHIỆM")
+    col_khoi, col_lop, col_thang = st.columns(3)
+    
+    with col_khoi:
+        selected_khoi = st.selectbox("Chọn Khối lớp:", ["Khối lớp 6", "Khối lớp 7", "Khối lớp 8", "Khối lớp 9"], key="sb_khoi_lop")
+    with col_lop:
+        lop_dict = {
+            "Khối lớp 6": ["6A","6B","6C","6D","6E","6F"], 
+            "Khối lớp 7": ["7A","7B","7C","7D","7E","7F"], 
+            "Khối lớp 8": ["8A","8B","8C","8D","8E","8F"], 
+            "Khối lớp 9": ["9A","9B","9C","9D","9E","9F","9G"]
+        }
+        selected_lop = st.selectbox("Chọn Lớp chủ nhiệm:", lop_dict.get(selected_khoi, ["6A"]), key="sb_lop_chu_nhiem")
+    with col_thang:
+        thang_options = [f"Tháng {i}/2026" for i in range(8, 13)] + [f"Tháng {i}/2027" for i in range(1, 6)]
+        selected_thang = st.selectbox("Chọn Tháng công tác:", thang_options, key="sb_thang_cong_tac")
+        
+    st.write("---")
+    ghi_chu_them = st.text_input("Yêu cầu bổ sung đặc biệt cho tháng này (nếu có):", placeholder="Ví dụ: Tập trung nề nếp thi đua...", key="txt_ghi_chu_them")
+    
+    if "data_content_chu_nhiem_thang" not in st.session_state:
+        st.session_state["data_content_chu_nhiem_thang"] = ""
+        
+    if st.button("🚀 Khởi tạo Kế hoạch bằng AI", type="primary", key="btn_chu_nhiem_ai"):
+        if run_ai_prompt_safe is not None:
+            with st.spinner(f"AI đang thiết lập kế hoạch {selected_thang}..."):
+                prompt_he_thong = f"""
+                Bạn là trợ lý AI cho giáo viên chủ nhiệm THCS Việt Nam. Hãy lập bản kế hoạch công tác chủ nhiệm chi tiết cho lớp {selected_lop} trong {selected_thang}.
+                YÊU CẦU ĐẦU RA PHẢI PHÂN TÁCH DÒNG DỌC RÕ RÀNG THEO CẤU TRÚC:
+                
+                KẾ HOẠCH THÁNG {selected_thang.replace('Tháng ', '')}
+                1. Chủ điểm: [Tên chủ điểm giáo dục tương ứng tháng]
+                - [Nhiệm vụ thi đua]
+                
+                2. Nội dung hoạt động:
+                - [Đầu việc lớn]
+                
+                * KẾ HOẠCH TỪNG TUẦN:
+                - TUẦN 22: (Ghi nội dung chi tiết từng việc nề nếp, sĩ số...)
+                
+                Ghi chú từ GV: {ghi_chu_them}
+                """
+                response = run_ai_prompt_safe(prompt_he_thong)
+                st.session_state["data_content_chu_nhiem_thang"] = response
+        else:
+            st.info("Hệ thống kết nối AI đang được đồng bộ...")
+
+    st.write("#### 📝 KHUNG VĂN BẢN KẾ HOẠCH THÁNG (Xem trước & Sửa đổi)")
+    
+    edited_text = st.text_area(
+        label="Nội dung kế hoạch công tác (Nhấn vào để sửa đổi):",
+        value=st.session_state["data_content_chu_nhiem_thang"],
+        height=450,
+        key="ta_main_editor"
+    )
+    st.session_state["data_content_chu_nhiem_thang"] = edited_text
+    
+    if st.session_state["data_content_chu_nhiem_thang"].strip():
+        st.write("")
+        file_name_doc = f"Ke_hoach_chu_nhiem_{selected_lop}_{selected_thang.replace('/', '_')}.docx"
+        word_file_bytes = export_to_word(f"KẾ HOẠCH CHỦ NHIỆM LỚP {selected_lop} - {selected_thang.upper()}", edited_text)
+        
+        st.download_button(
+            label="📥 Tải xuống file Word (.docx)",
+            data=word_file_bytes,
+            file_name=file_name_doc,
+            mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
+            key="btn_download_word"
+        )
+import streamlit as st
+from chu_nhiem_nam_hoc import render_nam_hoc_tab
+from chu_nhiem_thang import render_thang_tab
+
+def render_chu_nhiem_section(run_ai_prompt_safe=None):
+    tab_tong_quan, tab_hang_thang = st.tabs([
+        "📊 Đặc điểm tình hình & Kế hoạch năm học", 
+        "📅 Kế hoạch công tác theo Tháng (AI Tự động)"
+    ])
+    
+    with tab_tong_quan:
+        render_nam_hoc_tab()
+
+    with tab_hang_thang:
+        render_thang_tab(run_ai_prompt_safe)
