@@ -21,7 +21,7 @@ def set_cell_margins(cell, top=100, bottom=100, left=150, right=150):
         tcMar.append(node)
     tcPr.append(tcMar)
 
-# --- HÀM XUẤT PHÔI WORD NÂNG CẤP ĐỦ 8 CỘT THEO MẪU MỚI ---
+# --- HÀM XUẤT PHÔI WORD NÂNG CẤP ĐỦ 8 CỘT ---
 def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     doc = docx.Document()
     for section in doc.sections:
@@ -70,7 +70,6 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
                 run.font.name = 'Times New Roman'
                 run.font.size = Pt(11)
 
-    # 🌟 VÁ LỖI TRIỆT ĐỂ: Gán chỉ mục [số ô] rõ ràng từ 0 đến 7 để đổ dữ liệu vào Word không bị lỗi mảng
     if isinstance(content_data, list):
         for idx, item in enumerate(content_data, 1):
             row_cells = table.add_row().cells
@@ -106,7 +105,7 @@ def export_plan_to_docx_with_table(teacher_name, subject_name, content_data):
     doc.save(bio)
     return bio.getvalue()
 
-# --- HÀM XUẤT FILE EXCEL MẪU 8 CỘT CHUẨN XÁC ---
+# --- HÀM XUẤT FILE EXCEL MẪU 8 CỘT ---
 def export_plan_to_excel(teacher_name, subject_name, content_data):
     output = io.BytesIO()
     raw_df = pd.DataFrame(content_data)
@@ -134,7 +133,7 @@ def export_plan_to_excel(teacher_name, subject_name, content_data):
             worksheet.column_dimensions[col_letter].width = max(max_len + 3, 12)
     return output.getvalue()
 
-# --- HÀM TRÍCH XUẤT CHỮ TỪ FILE TÀI LIỆU ---
+# --- HÀM TRÍCH XUẤT CHỮ (NÂNG CẤP ĐỌC ĐƯỢC CẢ FILE EXCEL TẢI LÊN) ---
 def extract_text_from_file(uploaded_file):
     if uploaded_file is None:
         return ""
@@ -145,10 +144,14 @@ def extract_text_from_file(uploaded_file):
         elif file_name.endswith(".docx"):
             doc = docx.Document(uploaded_file)
             return "\n".join([p.text for p in doc.paragraphs])
+        elif file_name.endswith(".xlsx") or file_name.endswith(".xls"):
+            # Đọc file Excel cấu trúc cũ của giáo viên làm ngữ cảnh
+            df = pd.read_excel(uploaded_file)
+            return f"Nội dung file Excel kế hoạch cũ ({file_name}):\n" + df.to_string()
         elif file_name.endswith(".pdf"):
-            return "Nội dung tệp PDF đính kèm: " + str(uploaded_file.name)
+            return f"[File đính kèm: {file_name}]"
     except Exception as e:
-        return f"Không thể đọc file: {str(e)}"
+        return f"Không thể đọc file {file_name}: {str(e)}"
     return ""
 # --- GIAO DIỆN PHÂN HỆ KẾ HOẠCH CÁ NHÂN ---
 def render_personal_plan(run_ai_handler=None):
@@ -161,7 +164,6 @@ def render_personal_plan(run_ai_handler=None):
     st.sidebar.markdown("### 🔒 CHỌN VAI TRÒ ĐĂNG NHẬP")
     vai_tro = st.sidebar.radio("Vai trò", ["Giáo viên bộ môn", "Tổ trưởng chuyên môn (Admin)", "Ban giám hiệu"], label_visibility="collapsed", key="vai_tro_plan_sidebar_fixed_v8")
     
-    # Chỉ giữ lại thông báo gợi ý phân quyền phụ, loại bỏ toàn bộ chốt chặn logic is_admin
     if vai_tro == "Tổ trưởng chuyên môn (Admin)":
         st.sidebar.info("Mã xác thực PIN hệ thống tổng đang hoạt động ngầm.")
 
@@ -173,37 +175,46 @@ def render_personal_plan(run_ai_handler=None):
         col_t, col_s = st.columns(2)
         t_name = col_t.text_input("Họ và tên Giáo viên giảng dạy:", placeholder="Ví dụ: Thầy Lê Hồng Dưỡng", key="plan_txt_t_name_v8")
         s_name = col_s.selectbox("Môn học / Phân môn phụ trách:", ["Khoa học tự nhiên (Vật lý)", "Khoa học tự nhiên (Sinh học)", "Khoa học tự nhiên (Hóa học)", "Toán học", "Ngữ văn", "GDTC"], key="plan_sb_s_name_v8")
-        col_g, col_w = st.columns(2)
+        
+        # Thiết kế 3 cột để thêm trường Tổng số tiết trong năm học
+        col_g, col_w, col_total = st.columns(3)
         grade_target = col_g.text_input("Khối lớp phân công dạy:", placeholder="Ví dụ: Khối 9, Khối 7", key="plan_txt_grade_target_v8")
-        week_count = col_w.text_input("Tổng số tuần thực hiện kế hoạch:", placeholder="Ví dụ: 35 Tuần", key="plan_txt_week_count_v8")
+        week_count = col_w.text_input("Tổng số tuần thực hiện kế hoạch:", placeholder="35 Tuần", value="35 Tuần", key="plan_txt_week_count_v8")
+        # 🌟 TÍNH NĂNG MỚI: Thêm ô nhập tổng số tiết năm học
+        total_lessons = col_total.number_input("Tổng số tiết trong năm học:", min_value=1, max_value=300, value=70, step=1, key="plan_num_total_lessons_v8")
         
         st.markdown("**💬 Các tiêu chí đặc thù hoặc lưu ý phân bổ tiết (Nếu có):**")
         note_plan = st.text_area("Yêu cầu bổ sung cho AI:", placeholder="Ví dụ: Cần chia nhỏ phân phối chương trình thành từng tiết đơn lẻ 1, 2, 3...", label_visibility="collapsed", key="plan_ta_note_v8")
         
-        st.markdown("    **📚 Đính kèm tài liệu phân phối chương trình hoặc Chương trình môn học (Tùy chọn):**")
-        sgk_file = st.file_uploader("Tải file tài liệu SGK (.txt, .docx, .pdf)", type=["txt", "docx", "pdf"], label_visibility="collapsed", key="sgk_file_uploader_v8")
+        # 🌟 TÍNH NĂNG MỚI: Cho phép tải lên nhiều file cùng lúc (Excel + PDF)
+        st.markdown("    **📚 Đính kèm tài liệu tham khảo (File SGK dạng PDF/Word và File Excel kế hoạch đã có sẵn nếu có):**")
+        uploaded_files = st.file_uploader("Tải tệp lên hệ thống (Chấp nhận nhiều file cùng lúc)", type=["txt", "docx", "pdf", "xlsx", "xls"], accept_multiple_files=True, label_visibility="collapsed", key="sgk_file_uploader_v8")
         
         run_ai_plan = st.form_submit_button("🚀 Khởi tạo Kế hoạch bằng AI", type="primary", use_container_width=True)
     if run_ai_plan:
         if not t_name or not grade_target:
             st.warning("⚠️ Vui lòng điền Họ tên giáo viên và Khối lớp để AI lập kế hoạch!")
         else:
-            with st.spinner("Trợ lý AI đang đọc tệp tài liệu và phân bổ dữ liệu Phụ lục III..."):
-                context_document = ""
-                if sgk_file is not None:
-                    context_document = extract_text_from_file(sgk_file)
+            with st.spinner("Trợ lý AI đang tổng hợp các file tài liệu và phân bổ đều số tiết dạy..."):
+                # Gom nội dung từ tất cả các file giáo viên đã tải lên
+                combined_context = ""
+                if uploaded_files:
+                    for f in uploaded_files:
+                        combined_context += extract_text_from_file(f) + "\n\n"
                 
+                # Ra lệnh chi tiết: Ép phân rải đều số tiết CT chạy lũy tiến đến đúng tổng số tiết đã nhập
                 prompt_plan = (
                     f"Hãy soạn thảo phân bổ chương trình dạy học chi tiết bám sát định hướng Chương trình GDPT 2018 cho giáo viên: {t_name}, môn: {s_name}, khối: {grade_target} trong {week_count}. "
+                    f"Tổng số tiết bắt buộc phải rải đều trong năm học là: {total_lessons} tiết.\n"
                     f"Yêu cầu bổ sung kỹ thuật: {note_plan}. "
-                    f"Tại cột 'YeuCauCanDat', bạn bắt buộc phải phân tích và trích xuất đúng bám sát theo tài liệu tham khảo được cung cấp ở đây:\n"
-                    f"[DỮ LIỆU THAM KHẢO TỪ FILE TÀI LIỆU]:\n{context_document}\n\n"
-                    f"Mỗi bài học lớn phải được rải đều tách nhỏ thành các hàng đơn lẻ ứng với từng 'Tiết CT' độc lập (Ví dụ: Bài 1 (Tiết 1) xếp ở 1 dòng riêng, Bài 1 (Tiết 2) xếp ở dòng tiếp theo). "
+                    f"Nhiệm vụ của bạn là phải phân tích, bám sát và kế thừa tối đa từ các tài liệu đính kèm (nội dung bài học từ file SGK hoặc cấu trúc phân bổ từ file Excel kế hoạch có sẵn) dưới đây:\n"
+                    f"[DỮ LIỆU THAM KHẢO TỪ CÁC FILE TẢI LÊN]:\n{combined_context}\n\n"
+                    f"Quy tắc chia dòng: Danh sách kết quả phải chạy lũy tiến từ Tiết CT số 1 cho đến tiết số {total_lessons}. Mỗi hàng ứng với 1 tiết duy nhất, số tiết ghi rõ là 1. "
                     f"Trả về mảng JSON thuần túy gồm danh sách các đối tượng, không kèm markdown thô nào ngoài thẻ mở/đóng json. "
                     f"Mỗi đối tượng bắt buộc phải chứa đúng cấu trúc 8 khóa sau không được sai lệch: "
-                    f'[{{"TietCT": "Số thứ tự tiết lũy tiến tăng dần", "BaiHoc": "Tên bài học kèm chỉ số tiết (Ví dụ: Bài 1. Giới thiệu... (Tiết 1))", '
-                    f'"SoTiet": "Tổng số tiết phân bổ cho bài đó", "ThoiDiem": "Tuần thực hiện (Ví dụ: Tuần 1)", '
-                    f'"YeuCauCanDat": "Yêu cầu cần đạt cụ thể sinh tự động bám sát theo tài liệu tham khảo", "ThietBi": "Thiết bị dạy học sử dụng cụ thể", "DiaDiem": "Địa điểm dạy học (Mặc định: Lớp học)"}}]'
+                    f'[{{"TietCT": "Số thứ tự tiết lũy tiến (từ 1 đến {total_lessons})", "BaiHoc": "Tên bài học cụ thể", '
+                    f'"SoTiet": "1", "ThoiDiem": "Tuần thực hiện (Phân bổ hợp lý trong {week_count})", '
+                    f'"YeuCauCanDat": "Yêu cầu cần đạt sinh tự động bám sát theo tài liệu", "ThietBi": "Thiết bị dạy học sử dụng cụ thể", "DiaDiem": "Địa điểm dạy học (Mặc định: Lớp học)"}}]'
                 )
                 
                 if run_ai_handler is not None:
@@ -227,7 +238,7 @@ def render_personal_plan(run_ai_handler=None):
                                 "weeks": week_count,
                                 "data": parsed_data
                             }
-                            st.success("🎉 Khởi tạo và lưu trữ phân phối chương trình thành công!")
+                            st.success("🎉 Khởi tạo kế hoạch đồng bộ đa tài liệu thành công!")
                         except Exception as parse_err:
                             st.error("⚠️ AI phản hồi cấu hình phân tách hàng chưa đồng bộ. Vui lòng bấm thử lại để làm mới.")
                 else:
