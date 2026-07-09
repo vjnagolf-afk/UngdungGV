@@ -9,7 +9,7 @@ from google import genai
 # =========================================================
 # CẤU HÌNH GOOGLE SHEETS
 # =========================================================
-SHEET_ID = 'DÁN_SHEET_ID_CỦA_THẦY_VÀO_ĐÂY'
+SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY'
 SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
 
 def get_sheet():
