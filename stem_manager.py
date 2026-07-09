@@ -23,11 +23,16 @@ def save_to_sheets(ten_du_an, noi_dung):
     try:
         sheet = get_sheet()
         ngay_luu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
-        # Sử dụng append_row với danh sách thuần túy (string)
-        sheet.append_row([str(ten_du_an), str(noi_dung), str(ngay_luu)])
+        
+        # Ép kiểu rõ ràng thành chuỗi (string) để gspread không hiểu lầm
+        row_data = [str(ten_du_an), str(noi_dung), str(ngay_luu)]
+        
+        # Ghi dữ liệu
+        sheet.append_row(row_data)
         return True
     except Exception as e:
-        st.error(f"Lỗi lưu Sheets: {e}")
+        # Xuất lỗi chi tiết hơn để kiểm tra
+        st.error(f"Lỗi lưu Sheets: {type(e).__name__} - {e}")
         return False
 
 # =========================================================
