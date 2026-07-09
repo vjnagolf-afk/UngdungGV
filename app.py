@@ -2,7 +2,7 @@
 import streamlit as st
 import pandas as pd
 from google import genai
-from google.genai import errors  # SỬA LỖI: Dùng module lỗi chuẩn của gói google-genai mới
+from google.genai import errors  
 
 # --- 1. PHÂN LUỒNG IMPORT CÁC MODULE ĐỘC LẬP ---
 from exam_designer import render_exam_designer_section
@@ -15,7 +15,7 @@ from org_manager import render_org_section
 from bien_ban_manager import render_meeting_minutes
 from ke_hoach_ca_nhan_manager import render_personal_plan 
 from stem_manager import render_stem_section
-from chu_nhiem_section import render_chu_nhiem_section
+from chu_nhiem_manager import render_chu_nhiem_section # ĐÃ SỬA LỖI ĐƯỜNG DẪN MODULE TẠI ĐÂY
 
 # --- 2. CẤU HÌNH ĐỌC API KEY TỰ ĐỘNG TỪ TRONG SECRETS ---
 API_KEY_HE_THONG = st.secrets.get("GEMINI_API_KEY", "")
@@ -25,13 +25,13 @@ def run_ai_prompt_safe(prompt_text):
     if not api_key:
         return "⚠️ Hệ thống chưa được cấu hình API Key trong mục Secrets. Vui lòng liên hệ Admin.", "error"
     
-    # DANH SÁCH MÔ HÌNH DỰ PHÒNG THEO THỨ TỰ ƯU TIÊN (Chuẩn cú pháp SDK google-genai mới)
+    # DANH SÁCH MÔ HÌNH DỰ PHÒNG THEO THỨ TỰ ƯU TIÊN
     MODEL_FALLBACK_LIST = [
-        "gemini-2.5-flash",        # Ưu tiên 1: Mô hình Flash chuẩn của hệ thống hiện tại
-        "gemini-1.5-flash",        # Ưu tiên 2: Mô hình Flash đời cũ cực kỳ ổn định
-        "gemini-2.5-pro",          # Ưu tiên 3: Mô hình Pro cao cấp
-        "gemini-1.5-pro",          # Ưu tiên 4: Mô hình Pro thế hệ 1.5 (hạn mức 50 câu/ngày)
-        "gemini-3.1-flash-lite"    # Ưu tiên 5: Mô hình "chống cháy" tối ưu chi phí, hạn mức tự do cao
+        "gemini-2.5-flash",        
+        "gemini-1.5-flash",        
+        "gemini-2.5-pro",          
+        "gemini-1.5-pro",          
+        "gemini-3.1-flash-lite"    
     ]
     
     last_error_message = ""
@@ -44,22 +44,17 @@ def run_ai_prompt_safe(prompt_text):
                 model=model_name,
                 contents=prompt_text,
             )
-            # Nếu thành công, lập tức trả về nội dung đề và tên chính xác của mô hình đã xử lý
             return response.text, model_name
             
-        except errors.APIError as error:  # SỬA LỖI: Bắt lỗi API lỗi hạn mức theo chuẩn thư viện mới
-            error_msg = str(error)
+        except errors.APIError as error:  
             last_error_message = f"Mô hình {model_name} lỗi hoặc hết hạn mức (Quota). Đang lùi về mô hình tiếp theo..."
-            
-            # Đẩy thông báo nhỏ dạng Toast góc màn hình để thầy theo dõi tiến trình chuyển kênh tự động
             st.toast(last_error_message, icon="⚠️")
-            continue  # Chuyển tiếp sang thử nghiệm cấu hình mô hình tiếp theo trong danh sách
+            continue  
             
         except Exception as e:
             last_error_message = f"Mô hình {model_name} gặp sự cố: {str(e)}"
             continue
             
-    # TRƯỜNG HỢP TẤT CẢ CÁC MÔ HÌNH MIỄN PHÍ TRÊN HỆ THỐNG ĐỀU ĐÃ BỊ KHÓA
     return f"Lỗi quá tải hệ thống trên diện rộng (Tất cả mô hình dự phòng đều cạn hạn mức). Lỗi cuối cùng: {last_error_message}", "error"
 
 # --- 3. KHỞI TẠO BỘ NHỚ TẠM ĐỒNG BỘ ---
@@ -123,7 +118,6 @@ else:  # Phân hệ Quản lý tổ chuyên môn
     elif menu == "4. Thống kê số liệu": 
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
         
-        # --- 🌟 ĐỌC DỮ LIỆU TRỰC TIẾP TỪ SQLITE CỦA NHÁNH 1 ---
         import sqlite3
         import os
         
@@ -151,7 +145,6 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             if len(df_tv) > 0 and not (df_tv["Phân môn chính"] == "").all():
                 thuc_te_co_du_lieu = True
 
-        # --- LUỒNG 1: NẾU CƠ SỞ DỮ LIỆU TRỐNG (CHẾ ĐỘ THỬ NGHIỆM ĐI THI) ---
         if not thuc_te_co_du_lieu:
             st.warning("ℹ️ Hiện tại chưa có dữ liệu giáo viên nào được nhập từ phân hệ '1. Quản lý & Phân công chuyên môn'.")
             
