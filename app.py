@@ -84,7 +84,6 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
         render_grade_manager_section()
     elif menu == "5. Quản lý TKB": 
         render_tkb_manager()
-
 else:  # Phân hệ Quản lý tổ chuyên môn
     st.sidebar.markdown("### 📂 QUẢN LÝ TỔ CHUYÊN MÔN")
     menu = st.sidebar.selectbox("Nội dung quản lý", ["1. Quản lý & Phân công chuyên môn", "2. Biên bản sinh hoạt", "3. Kế hoạch cá nhân", "4. Thống kê số liệu"], label_visibility="collapsed", key="menu_ql_selectbox_v9")
@@ -95,21 +94,19 @@ else:  # Phân hệ Quản lý tổ chuyên môn
         render_meeting_minutes(lambda p: run_ai_prompt_safe(p))
     elif menu == "3. Kế hoạch cá nhân": 
         render_personal_plan(lambda p: run_ai_prompt_safe(p))
-        elif menu == "4. Thống kê số liệu": 
+    elif menu == "4. Thống kê số liệu": 
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
         
-        # --- 🌟 BƯỚC ĐỘT PHÁ: ĐỌC DỮ LIỆU TRỰC TIẾP TỪ SQLITE CỦA NHÁNH 1 ---
+        # --- 🌟 ĐỌC DỮ LIỆU TRỰC TIẾP TỪ SQLITE CỦA NHÁNH 1 ---
         import sqlite3
         import os
         
         DB_PATH = "teacher_assistant.db"
         df_tv = pd.DataFrame()
         
-        # Kiểm tra xem file cơ sở dữ liệu vật lý ở mục 1 đã được tạo ra chưa
         if os.path.exists(DB_PATH):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                # Thực hiện thuật toán JOIN kết nối 2 bảng: Thành viên (org_members) và Phân công tiết dạy (org_assignments)
                 query = """
                 SELECT 
                     m.fullname as [Họ và tên],
@@ -123,34 +120,31 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             except Exception as e:
                 st.error(f"⚠️ Lỗi kết nối cơ sở dữ liệu nội bộ: {str(e)}")
         
-        # Kiểm tra xem bảng dữ liệu trong SQLite thực tế đã có ai nhập chưa
         thuc_te_co_du_lieu = False
         if not df_tv.empty:
-            # Nếu tất cả các hàng đều là dữ liệu trắng mặc định thì coi như trống
             if len(df_tv) > 0 and not (df_tv["Phân môn chính"] == "").all():
                 thuc_te_co_du_lieu = True
 
-        # --- LUỒNG XỬ LÝ 1: NẾU CƠ SỞ DỮ LIỆU TRỐNG HOÀN TOÀN (HIỂN THỊ CHẾ ĐỘ THỬ NGHIỆM ĐI THI) ---
+        # --- LUỒNG 1: NẾU CƠ SỞ DỮ LIỆU TRỐNG (CHẾ ĐỘ THỬ NGHIỆM ĐI THI) ---
         if not thuc_te_co_du_lieu:
             st.warning("ℹ️ Hiện tại chưa có dữ liệu giáo viên nào được nhập từ phân hệ '1. Quản lý & Phân công chuyên môn'.")
             
             if st.button("💡 Nạp nhanh dữ liệu mẫu để thử nghiệm biểu đồ", type="primary", use_container_width=True):
                 try:
                     conn = sqlite3.connect(DB_PATH)
-                    # Tạo cấu trúc bảng mẫu nếu chưa chạy mục 1 lần nào
                     conn.execute("CREATE TABLE IF NOT EXISTS org_members (id INTEGER PRIMARY KEY AUTOINCREMENT, fullname TEXT UNIQUE, position TEXT, main_subject TEXT, email TEXT, phone TEXT, note TEXT)")
                     conn.execute("CREATE TABLE IF NOT EXISTS org_assignments (id INTEGER PRIMARY KEY AUTOINCREMENT, fullname TEXT UNIQUE, subject_class TEXT, homeroom TEXT, concurrent TEXT, total_periods TEXT DEFAULT '0')")
                     
                     danh_sach_demo = [
-                        ("Lê Hồng Dưỡng", "Tổ trưởng", "Khoa học tự nhiên (Phân môn Vật lí)", 14),
-                        ("Nguyễn Thị Huyền Trang", "Tổ viên", "Khoa học tự nhiên (Phân môn Vật lí)", 16),
-                        ("Khương Thị Thúy Vân", "Tổ viên", "Khoa học tự nhiên (Phân môn Sinh học)", 12),
-                        ("Phạm Thùy Ngoan", "Tổ viên", "Khoa học tự nhiên (Phân môn Hóa học)", 15),
-                        ("Trần Xuân Hạnh", "Tổ viên", "Giáo dục thể chất", 14)
+                        ("Lê Hồng Dưỡng", "Khoa học tự nhiên (Phân môn Vật lí)", "14"),
+                        ("Nguyễn Thị Huyền Trang", "Khoa học tự nhiên (Phân môn Vật lí)", "16"),
+                        ("Khương Thị Thúy Vân", "Khoa học tự nhiên (Phân môn Sinh học)", "12"),
+                        ("Phạm Thùy Ngoan", "Khoa học tự nhiên (Phân môn Hóa học)", "15"),
+                        ("Trần Xuân Hạnh", "Giáo dục thể chất", "14")
                     ]
-                    for row in danh_sach_demo:
-                        conn.execute("INSERT OR REPLACE INTO org_members (fullname, position, main_subject) VALUES (?, 'GV', ?)", (row[0], row[2]))
-                        conn.execute("INSERT OR REPLACE INTO org_assignments (fullname, total_periods) VALUES (?, ?)", (row[0], str(row[1])))
+                    for name, subj, periods in danh_sach_demo:
+                        conn.execute("INSERT OR REPLACE INTO org_members (fullname, position, main_subject) VALUES (?, 'GV', ?)", (name, subj))
+                        conn.execute("INSERT OR REPLACE INTO org_assignments (fullname, total_periods) VALUES (?, ?)", (name, periods))
                     conn.commit()
                     conn.close()
                     st.success("🎉 Đã nạp dữ liệu thử nghiệm trực tiếp vào SQLite! Đang dựng sơ đồ...")
@@ -158,19 +152,18 @@ else:  # Phân hệ Quản lý tổ chuyên môn
                 except Exception as demo_err:
                     st.error(f"Không thể nạp dữ liệu mẫu: {demo_err}")
                 
-        # --- LUỒNG XỬ LÝ 2: ĐỒNG BỘ DỮ LIỆU THỰC TẾ THỜI GIAN THỰC TỪ SQLITE ---
+        # --- LUỒNG 2: ĐỒNG BỘ DỮ LIỆU THỰC TẾ THỜI GIAN THỰC TỪ SQLITE ---
         else:
-            # Làm sạch dữ liệu chữ viết, khoảng trắng và các ô trống NaN từ SQLite đổ ra
             df_tv["Phân môn chính"] = df_tv["Phân môn chính"].fillna("Chưa phân môn").replace("", "Chưa phân môn")
             df_tv["Họ và tên"] = df_tv["Họ và tên"].fillna("Giáo viên ẩn danh").replace("", "Giáo viên ẩn danh")
             
-            # Ép kiểu dữ liệu số tiết sang dạng số nguyên cưỡng chế để thực hiện toán học cộng dồn
+            # Ép kiểu dữ liệu số tiết sang số để tính toán
             df_tv["Số tiết/Tuần"] = pd.to_numeric(df_tv["Số tiết/Tuần"], errors='coerce').fillna(0).astype(int)
             
-            # Thiết lập giá trị mặc định cho số tiết nếu phân công của giáo viên đó đang báo dấu gạch ngang '-' hoặc bằng 0
-            df_tv.loc[df_tv["Số tiết/Tuần"] == 0, "Số tiết/Tuần"] = 14 # Định mức mặc định đi thi
+            # Nếu số tiết bằng 0 hoặc chưa phân công, gán giá trị định mức mặc định để vẽ biểu đồ không bị bằng 0
+            df_tv.loc[df_tv["Số tiết/Tuần"] == 0, "Số tiết/Tuần"] = 14
             
-            # 1. Hộp số liệu tổng quan tự động tính toán (Metrics)
+            # Chỉ số tổng quan
             st.markdown("### 📌 Chỉ số tổng quan tổ chuyên môn (Dữ liệu thực tế từ SQLite)")
             m_col1, m_col2, m_col3 = st.columns(3)
             
@@ -185,7 +178,6 @@ else:  # Phân hệ Quản lý tổ chuyên môn
                 
             st.markdown("---")
             
-            # 2. Khu vực xây dựng các biểu đồ đồ họa phân tích trực quan
             chart_col1, chart_col2 = st.columns(2)
             
             with chart_col1:
@@ -201,4 +193,5 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             st.markdown("---")
             st.markdown("### 🗂️ Danh sách trích xuất dữ liệu chi tiết")
             st.dataframe(df_tv, use_container_width=True, hide_index=True)
+
 
