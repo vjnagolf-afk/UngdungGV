@@ -45,7 +45,7 @@ def render_tab_1():
     if st.button("✨ KÍCH HOẠT AI GỢI Ý CHỦ ĐỀ MỚI", use_container_width=True, key="btn_ai_t1"):
         with st.spinner("AI đang tổng hợp dữ liệu..."):
             prompt_goi_y = f"Đề xuất 3 dự án STEM cho: {chon_khoi_t1}, Môn: {chon_mon_t1}, Lĩnh vực: {chon_chu_de_t1}. Yêu cầu: {tich_hop_ai_t1 and 'Có vi điều khiển' or 'Không bắt buộc'}."
-            client = genai.Client() 
+            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
             response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt_goi_y)
             st.session_state.stem_ai_suggestions = response.text
             st.rerun()
@@ -69,7 +69,7 @@ def render_tab_2():
     if st.button("🚀 KÍCH HOẠT AI BIÊN SOẠN KHBD CHI TIẾT", type="primary", use_container_width=True, key="btn_ai_t2"):
         with st.spinner("AI đang soạn KHBD..."):
             prompt = f"Soạn KHBD STEM chi tiết cho: {ten_chu_de_t2}. Môn: {mon_chu_dao_t2}. Tích hợp IoT: {tich_hop_ai_t2}."
-            client = genai.Client()
+            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
             response = client.models.generate_content(model='gemini-2.5-flash', contents=prompt)
             st.session_state.stem_generated_content = response.text
             st.rerun()
