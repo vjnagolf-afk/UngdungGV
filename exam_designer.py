@@ -340,7 +340,7 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
         st.markdown("<div style='margin-top: 8px;'>Nhập yêu cầu khác (Tùy chọn):</div>", unsafe_allow_html=True)
         yeu_cau_khac = st.text_area("Yeu_Cau_Khac", placeholder="Nhập yêu cầu khác ....")
 # ==========================================
-# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ
+# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ (CÓ NÚT ĐỒNG BỘ)
 # ==========================================
         # (Tiếp nối xử lý điều kiện bấm nút sinh đề lồng bên dưới Khối 5A)
         if btn_tao:
@@ -398,13 +398,7 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                             "noi_dung": result_text
                         })
                         
-                        # Thực hiện lưu đồng bộ dòng dữ liệu mới vào tab DE_KT
-                        is_synced = sync_to_google_sheet(ten_de_moi, mon_de, khoi_de, thoi_gian_de, result_text)
-                        
-                        if is_synced:
-                            st.success(" Đã tạo đề thi và tự động lưu vào Google Sheet (Tab: DE_KT)! Thầy/Cô chuyển sang tab THƯ MỤC ĐỀ ĐÃ XÂY DỰNG để xem hoặc tải file Word.")
-                        else:
-                            st.success(" Đã tạo đề thi thành công vào bộ nhớ tạm! (Đồng bộ Google Sheet gặp sự cố kỹ thuật).")
+                        st.success(" Đã tạo đề thi thành công! Thầy/Cô vui lòng chuyển sang thẻ THƯ MỤC ĐỀ ĐÃ XÂY DỰNG để xem và bấm nút gửi lên Google Sheet.")
                             
                     except Exception as error_ai:
                         st.error(f"Lỗi hệ thống AI: {error_ai}")
@@ -426,12 +420,14 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                     st.markdown(hien_thi_web, unsafe_allow_html=True)
                     
                     st.markdown("<hr>", unsafe_allow_html=True)
-                    col_bt1, col_bt2 = st.columns(2)
+                    
+                    # CHIA THÀNH 3 CỘT ĐỂ THÊM NÚT ĐỒNG BỘ GOOGLE SHEET
+                    col_bt1, col_bt2, col_bt3 = st.columns(3)
                     
                     with col_bt1:
                         safe_file_name = f"De_{item['mon']}_{item['khoi']}_{real_idx}.docx".replace(" ", "_")
                         st.download_button(
-                            label=" Tải File Word (Word Docx Chuẩn Bố Cục)",
+                            label=" Tải File Word (.docx)",
                             data=export_to_docx_vietnam_standard(item["noi_dung"], item["ten_de"]),
                             file_name=safe_file_name,
                             key=f"dl_de_thi_{real_idx}",
@@ -440,6 +436,16 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                         )
                         
                     with col_bt2:
-                        if st.button(" Xóa đề kiểm tra này khỏi kho lưu trữ", key=f"del_de_thi_{real_idx}", use_container_width=True):
+                        # NÚT BẤM ĐỒNG BỘ THỦ CÔNG XUẤT HIỆN TẠI ĐÂY
+                        if st.button(" 📊 Đồng bộ Google Sheet", key=f"sync_gg_{real_idx}", use_container_width=True):
+                            with st.spinner("Đang gửi dữ liệu lên Google Sheet..."):
+                                success = sync_to_google_sheet(item['ten_de'], item['mon'], item['khoi'], "45 phút", item['noi_dung'])
+                                if success:
+                                    st.toast(" Đã lưu lên Google Sheet thành công!", icon="✅")
+                                else:
+                                    st.error("Lỗi đồng bộ. Vui lòng kiểm tra lại cấu hình!")
+                                    
+                    with col_bt3:
+                        if st.button(" Xóa đề này", key=f"del_de_thi_{real_idx}", use_container_width=True):
                             st.session_state["db_de_kiem_tra"].pop(real_idx)
                             st.rerun()
