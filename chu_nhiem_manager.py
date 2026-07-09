@@ -27,13 +27,13 @@ def render_tab_7(run_ai_prompt_safe=None):
         if st.button("💾 Lưu kế hoạch tuần", key="btn_save_kh"):
             st.success(f"Đã lưu thành công kế hoạch {tuan_hoc}!")
 
-    # --- TAB 2: QUẢN LÝ HỌC SINH ---
-    with tab_hoc_sink_hoac_lop:
+        # --- TAB 2: QUẢN LÝ HỌC SINH ---
+    with tab_hoc_sinh:  # Đã sửa lại tên biến tab cho chuẩn
         st.write("#### 📊 Danh sách học sinh cần lưu ý & Phân công")
         
-        # Bảng danh dách mẫu đơn giản
+        # Điền đầy đủ giá trị [1, 2, 3] cho cột STT ở dưới đây:
         data = {
-            "STT":,
+            "STT":,  
             "Họ và tên": ["Nguyễn Văn A", "Trần Thị B", "Lê Hoàng C"],
             "Chức vụ / Đặc điểm": ["Lớp trưởng", "Bí thư", "Học sinh cần hỗ trợ học tập"],
             "Ghi chú": ["Nhanh nhẹn", "Trách nhiệm", "Hay quên làm bài tập"]
@@ -41,6 +41,7 @@ def render_tab_7(run_ai_prompt_safe=None):
         df = pd.DataFrame(data)
         st.data_editor(df, num_rows="dynamic", use_container_width=True)
         st.caption("💡 Bạn có thể bấm trực tiếp vào bảng trên để sửa thông tin hoặc thêm dòng mới.")
+
 
     # --- TAB 3: TRỢ LÝ AI CHỦ NHIỆM ---
     with tab_ai_tro_ly:
