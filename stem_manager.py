@@ -5,7 +5,7 @@ from datetime import datetime
 
 # Cấu hình
 SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SHEET_ID = '1QhX2fP520f9xXoP2p3W5i2123456789' # Thầy nhớ kiểm tra lại ID này
+SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # Thầy nhớ kiểm tra lại ID này
 
 def get_sheet():
     creds_dict = dict(st.secrets["GOOGLE_KEY"])
