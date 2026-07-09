@@ -9,12 +9,30 @@ from datetime import datetime
 SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # Thầy điền lại ID của thầy vào đây nhé
 
 def get_sheet():
-    # Chuyển đổi secrets thành dictionary
-    creds_dict = dict(st.secrets["GOOGLE_KEY"])
+    # 1. Lấy dict từ secrets
+    creds_dict = st.secrets["GOOGLE_KEY"]
+    
+    # 2. Chuyển đổi dict thành dict chuẩn (phòng ngừa lỗi kiểu dữ liệu từ st.secrets)
+    creds_data = {
+        "type": creds_dict["type"],
+        "project_id": creds_dict["project_id"],
+        "private_key_id": creds_dict["private_key_id"],
+        "private_key": creds_dict["private_key"],
+        "client_email": creds_dict["client_email"],
+        "client_id": creds_dict["client_id"],
+        "auth_uri": creds_dict["auth_uri"],
+        "token_uri": creds_dict["token_uri"],
+        "auth_provider_x509_cert_url": creds_dict["auth_provider_x509_cert_url"],
+        "client_x509_cert_url": creds_dict["client_x509_cert_url"]
+    }
+    
+    # 3. Sử dụng from_service_account_info thay vì from_json_keyfile_dict 
+    # Cách này an toàn hơn và không gây lỗi "seekable bit stream"
     scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_dict, scope)
+    creds = ServiceAccountCredentials.from_json_keyfile_dict(creds_data, scope)
     client = gspread.authorize(creds)
-    return client.open_by_key(SHEET_ID).worksheet("STEM_Projects")
+    
+    return client.open_by_key(SHEET_ID).worksheet("STEM_Projects"))
 
 # =========================================================
 # HÀM LƯU DỮ LIỆU
