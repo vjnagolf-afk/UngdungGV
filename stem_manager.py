@@ -3,9 +3,9 @@ import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 from datetime import datetime
 
-# Cấu hình scope
+# Cấu hình
 SCOPE = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
-SHEET_ID = '1QhX2fP520f9xXoP2p3W5i2123456789' # Thầy thay đúng ID của thầy vào đây
+SHEET_ID = '1QhX2fP520f9xXoP2p3W5i2123456789' # Thầy nhớ kiểm tra lại ID này
 
 def get_sheet():
     creds_dict = dict(st.secrets["GOOGLE_KEY"])
@@ -23,6 +23,11 @@ def save_to_sheets(ten_du_an, noi_dung):
         st.error(f"Lỗi: {e}")
         return False
 
+# --- GIAO DIỆN CÁC THẺ ---
+def render_tab_1():
+    st.info("💡 Đây là nội dung của Thẻ 1 (Sản phẩm).")
+    # Thầy dán lại logic cũ của Thẻ 1 vào đây
+
 def render_tab_2():
     st.success("🛠️ THẺ 2: Soạn KHBD.")
     if "stem_generated_content" not in st.session_state:
@@ -35,9 +40,17 @@ def render_tab_2():
     if st.session_state.stem_generated_content:
         st.write(st.session_state.stem_generated_content)
         if st.button("💾 LƯU VÀO GOOGLE SHEETS"):
-            save_to_sheets(ten_chu_de_t2, st.session_state.stem_generated_content)
+            if save_to_sheets(ten_chu_de_t2, st.session_state.stem_generated_content):
+                st.toast("Đã lưu thành công!", icon="✅")
 
+def render_tab_3():
+    st.warning("📁 Đây là nội dung của Thẻ 3 (KHBD đã lưu).")
+    # Thầy dán lại logic cũ của Thẻ 3 vào đây
+
+# --- HÀM CHÍNH ---
 def render_stem_section():
     st.markdown("## 🚀 HỆ SINH THÁI GIÁO DỤC STEM")
     tab1, tab2, tab3 = st.tabs(["💡 1. SẢN PHẨM", "🛠️ 2. XÂY DỰNG KHBD", "📁 3. KHBD ĐÃ LƯU"])
+    with tab1: render_tab_1()
     with tab2: render_tab_2()
+    with tab3: render_tab_3()
