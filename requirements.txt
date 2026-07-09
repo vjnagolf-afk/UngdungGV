@@ -7,7 +7,6 @@ fpdf2
 pandas
 openpyxl
 gspread
-oauth2client
 matplotlib
 numpy
 gspread
