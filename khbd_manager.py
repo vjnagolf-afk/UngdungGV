@@ -260,7 +260,7 @@ def render_khbd_section(run_ai_prompt_safe_func):
                 st.warning("⚠️ Vui lòng nạp học liệu tham khảo để AI bám sát dữ liệu nguồn!")
             else:
                 with st.spinner("🧠 Trợ lý AI đang nghiên cứu kỹ dữ liệu nguồn đa file và tiến hành lập tiến trình bài dạy..."):
-                    from khbd_manager import extract_context_from_uploaded_files
+                    from khbd_manager import render_khbd_section
                     văn_bản_nguồn, danh_sách_ảnh = extract_context_from_uploaded_files(tai_hoc_lieu)
                     st.session_state["kho_anh_trich_xuat"] = danh_sách_ảnh
 
