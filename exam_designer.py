@@ -340,12 +340,15 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
         st.markdown("<div style='margin-top: 8px;'>Nhập yêu cầu khác (Tùy chọn):</div>", unsafe_allow_html=True)
         yeu_cau_khac = st.text_area("Yeu_Cau_Khac", placeholder="Nhập yêu cầu khác ....")
 # ==========================================
-# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ (CÓ NÚT ĐỒNG BỘ)
+# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ (ĐÃ VÁ LỖI API KEY)
 # ==========================================
         # (Tiếp nối xử lý điều kiện bấm nút sinh đề lồng bên dưới Khối 5A)
         if btn_tao:
-            if not api_key_input: 
-                st.error("Thầy cần cấu hình Gemini API Key tại thanh bên!")
+            # Sửa đổi: Kiểm tra API Key từ tham số truyền vào hoặc kiểm tra trực tiếp trong Streamlit Secrets hệ thống
+            actual_api_key = api_key_input if api_key_input else st.secrets.get("gemini_api_key", st.secrets.get("GEMINI_API_KEY", ""))
+            
+            if not actual_api_key: 
+                st.error("Hệ thống chưa cấu hình Gemini API Key! Vui lòng kiểm tra lại cấu hình Secrets hoặc Manage App.")
             else:
                 with st.spinner("Hệ thống đang phân tích tài liệu và cấu trúc để sinh Ma trận, Đề thi chuẩn mẫu..."):
                     try:
@@ -388,7 +391,8 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
 - I. TRẮC NGHIỆM: BẮT BUỘC KẺ BẢNG MARKDOWN DẠNG LƯỚI NGANG (Cột 1 là Câu 1, 2, 3..., Cột 2 là Đáp án A, B, C...).
 - II. TỰ LUẬN: BẮT BUỘC KẺ BẢNG MARKDOWN gồm 2 cột (Nội dung trả lời | Điểm) trình bày barem điểm chi tiết từng ý.
 """
-                        result_text, _ = run_ai_prompt_safe_func(prompt_de, api_key_input)
+                        # Chạy hàm với API key thực tế đã nhận diện từ hệ thống
+                        result_text, _ = run_ai_prompt_safe_func(prompt_de, actual_api_key)
                         
                         ten_de_moi = f"Đề {mon_de} - {khoi_de} ({thoi_gian_de})"
                         st.session_state["db_de_kiem_tra"].append({
@@ -420,8 +424,6 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                     st.markdown(hien_thi_web, unsafe_allow_html=True)
                     
                     st.markdown("<hr>", unsafe_allow_html=True)
-                    
-                    # CHIA THÀNH 3 CỘT ĐỂ THÊM NÚT ĐỒNG BỘ GOOGLE SHEET
                     col_bt1, col_bt2, col_bt3 = st.columns(3)
                     
                     with col_bt1:
@@ -436,7 +438,6 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                         )
                         
                     with col_bt2:
-                        # NÚT BẤM ĐỒNG BỘ THỦ CÔNG XUẤT HIỆN TẠI ĐÂY
                         if st.button(" 📊 Đồng bộ Google Sheet", key=f"sync_gg_{real_idx}", use_container_width=True):
                             with st.spinner("Đang gửi dữ liệu lên Google Sheet..."):
                                 success = sync_to_google_sheet(item['ten_de'], item['mon'], item['khoi'], "45 phút", item['noi_dung'])
@@ -449,3 +450,4 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
                         if st.button(" Xóa đề này", key=f"del_de_thi_{real_idx}", use_container_width=True):
                             st.session_state["db_de_kiem_tra"].pop(real_idx)
                             st.rerun()
+
