@@ -1,10 +1,34 @@
 import streamlit as st
 import io
 import re
+import json
+import os
 from docx import Document
 from google import genai
 
-# Hàm hỗ trợ dọn dẹp Markdown và tạo file Word
+# =========================================================
+# CẤU HÌNH LƯU TRỮ VĨNH VIỄN (FILE JSON)
+# =========================================================
+DATA_FILE = "dulieu_stem_khbd.json"
+
+def load_projects():
+    """Hàm đọc dữ liệu từ file JSON khi khởi động"""
+    if os.path.exists(DATA_FILE):
+        with open(DATA_FILE, "r", encoding="utf-8") as f:
+            try:
+                return json.load(f)
+            except json.JSONDecodeError:
+                return {}
+    return {}
+
+def save_projects_to_disk(projects):
+    """Hàm ghi dữ liệu xuống file JSON mỗi khi bấm Lưu/Xóa"""
+    with open(DATA_FILE, "w", encoding="utf-8") as f:
+        json.dump(projects, f, ensure_ascii=False, indent=4)
+
+# =========================================================
+# HÀM HỖ TRỢ XỬ LÝ WORD
+# =========================================================
 def create_word_file(title, content):
     doc = Document()
     doc.add_heading(title, 0)
@@ -24,7 +48,6 @@ def create_word_file(title, content):
 # THẺ 1: CÁC SẢN PHẨM STEM
 # =========================================================
 def render_tab_1():
-    # Dùng màu xanh dương (info) cho Thẻ 1
     st.info("💡 **THẺ 1 - BỘ LỌC TÌM KIẾM:** Chọn các tiêu chí để AI gợi ý dự án STEM.")
     
     col_m1, col_m2, col_m3 = st.columns(3)
@@ -66,8 +89,7 @@ def render_tab_1():
 # THẺ 2: XÂY DỰNG DỰ ÁN GIÁO DỤC STEM
 # =========================================================
 def render_tab_2():
-    # Dùng màu xanh lá (success) cho Thẻ 2 để tách biệt hoàn toàn
-    st.success("🛠️ **THẺ 2 - THIẾT KẾ KHBD:** Sau khi chốt được chủ đề ở Thẻ 1, thầy nhập tên vào đây để AI soạn giáo án.")
+    st.success("🛠️ **THẺ 2 - THIẾT KẾ KHBD:** Sau khi chốt được chủ đề ở Thẻ 1, thầy nhập tên vào đây để AI soạn KHBD.")
     
     ten_chu_de_t2 = st.text_input("✍️ Nhập Tên dự án / Chủ đề STEM:", placeholder="Ví dụ: Hệ thống cảnh báo tốc độ xe đạp điện...", key="ten_t2")
     
@@ -123,8 +145,11 @@ def render_tab_2():
             st.download_button("📥 Tải File Word (Đã xóa ký tự #)", data=docx_file, file_name=f"KHBD_STEM.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True, key="btn_down_t2")
         with col_save:
             if st.button("💾 Lưu KHBD vào Thẻ 3", use_container_width=True, key="btn_save_t2"):
+                # Lưu vào biến tạm
                 st.session_state.stem_saved_projects[ten_chu_de_t2] = st.session_state.stem_generated_content
-                st.toast("Đã lưu thành công!", icon="✅")
+                # Lưu vĩnh viễn vào ổ cứng (File JSON)
+                save_projects_to_disk(st.session_state.stem_saved_projects)
+                st.toast("Đã lưu vĩnh viễn thành công! Dù F5 cũng không mất.", icon="✅")
 
 # =========================================================
 # THẺ 3: QUẢN LÝ DỰ ÁN ĐÃ LƯU
@@ -136,7 +161,10 @@ def render_tab_3():
             with st.expander(f"📌 {ten_da}"):
                 st.markdown(st.session_state.stem_saved_projects[ten_da])
                 if st.button("🗑️ Xóa", key=f"btn_del_{ten_da}"):
+                    # Xóa khỏi biến tạm
                     del st.session_state.stem_saved_projects[ten_da]
+                    # Cập nhật lại file trên ổ cứng
+                    save_projects_to_disk(st.session_state.stem_saved_projects)
                     st.rerun() 
     else:
         st.info("Chưa có KHBD nào được lưu.")
@@ -150,10 +178,12 @@ def render_stem_section():
     
     if "stem_generated_content" not in st.session_state:
         st.session_state.stem_generated_content = ""
-    if "stem_saved_projects" not in st.session_state:
-        st.session_state.stem_saved_projects = {}
     if "stem_ai_suggestions" not in st.session_state:
         st.session_state.stem_ai_suggestions = ""
+        
+    # QUAN TRỌNG: Khởi tạo biến từ file JSON thay vì tạo thư mục rỗng
+    if "stem_saved_projects" not in st.session_state:
+        st.session_state.stem_saved_projects = load_projects()
 
     tab1, tab2, tab3 = st.tabs(["💡 1. SẢN PHẨM STEM", "🛠️ 2. XÂY DỰNG KHBD", "📁 3. KHBD ĐÃ LƯU"])
 
