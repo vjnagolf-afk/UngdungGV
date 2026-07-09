@@ -1,3 +1,4 @@
+# exam_designer.py
 import streamlit as st
 import io
 import re
@@ -162,7 +163,6 @@ def export_to_docx_vietnam_standard(text_content, title_name, school_name="TRƯ�
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
-# --- GIAO DIỆN CHÍNH PHÂN HỆ THIẾT KẾ ĐỀ (KHÔI PHỤC GIAO DIỆN GỐC) ---
 def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
     st.markdown("""
     <style>
@@ -179,13 +179,13 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
 
     if "db_de_kiem_tra" not in st.session_state:
         st.session_state["db_de_kiem_tra"] = []
-    if "current_exam_designer_output" not in st.session_state:
-        st.session_state["current_exam_designer_output"] = ""
+    if "current_exam_output_raw" not in st.session_state:
+        st.session_state["current_exam_output_raw"] = ""
 
     tab_thiet_ke, tab_kho_luu_tru = st.tabs(["📝 CHỨC NĂNG: TẠO ĐỀ KIỂM TRA AI", "📂 THƯ MỤC ĐỀ ĐÃ XÂY DỰNG"])
     
     with tab_thiet_ke:
-        col_top1, col_top2 = st.columns(2)
+        col_top1, col_top2 = st.columns([1, 1])
         with col_top1:
             c_lbl, c_sel = st.columns([1, 2])
             c_lbl.markdown("<div style='margin-top: 8px;'>Hình thức đề:</div>", unsafe_allow_html=True)
@@ -200,10 +200,10 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
             khoi_de = c_sel3.selectbox("Khoi", ["Khối 6", "Khối 7", "Khối 8", "Khối 9"])
             
             c_lbl4, c_txt4 = st.columns([1, 2])
-            c_lbl4.markdown("<div style='margin-top: 8px;'>Thời gian làm bài:</div>", unsafe_allow_html=True)
+            c_lbl4.markdown("<div style='margin-top: 8px;'>Thời gian:</div>", unsafe_allow_html=True)
             tg_de = c_txt4.text_input("Thoi_gian", value="45 phút")
 
-            st.markdown("**📂 Đính kèm tài liệu phân phối chương trình hoặc ma trận mẫu (Tùy chọn):**")
+            st.markdown("**📂 Đính kèm tài liệu ma trận hoặc nội dung mẫu (Tùy chọn):**")
             tai_lieu_dinh_kem = st.file_uploader("Tải tài liệu nền (.docx, .pdf)", type=["docx", "pdf"], key="file_de_tai_lieu")
 
         with col_top2:
@@ -215,15 +215,14 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
             pt_tl = col_sc2.number_input("Tổng điểm tự luận:", min_value=0.0, max_value=10.0, value=4.0, step=0.25, key="pt_tl")
             
             num_khuyet = col_sc1.number_input("Số câu điền khuyết:", min_value=0, max_value=20, value=4, step=1, key="num_khuyet")
-            pt_khuyet = col_sc2.number_input("Tổng điểm dòng này:", min_value=0.0, max_value=10.0, value=1.5, step=0.25, key="pt_khuyet")
+            pt_khuyet = col_sc2.number_input("Tổng điểm điền khuyết:", min_value=0.0, max_value=10.0, value=1.5, step=0.25, key="pt_khuyet")
             
             num_ngan = col_sc1.number_input("Số câu trả lời ngắn:", min_value=0, max_value=20, value=4, step=1, key="num_ngan")
-            pt_ngan = col_sc2.number_input("Tổng điểm dòng này:", min_value=0.0, max_value=10.0, value=1.5, step=0.25, key="pt_ngan")
+            pt_ngan = col_sc2.number_input("Tổng điểm trả lời ngắn:", min_value=0.0, max_value=10.0, value=1.5, step=0.25, key="pt_ngan")
 
         st.markdown("---")
-        # --- KHÔI PHỤC NÚT BẤM VÀ CẤU HÌNH TỶ LỆ MỨC ĐỘ NHẬN THỨC CŨ ---
         col_btn_zone, col_check_zone = st.columns([1, 2])
-        run_exam_ai = col_btn_zone.button("🚀 Tự động tạo ma trận & đề thi", type="primary", use_container_width=True)
+        run_exam_ai = col_btn_zone.form_submit_button("⚙️ Tự động tạo ma trận & đề thi", type="primary", use_container_width=True) if hasattr(col_btn_zone, 'form_submit_button') else col_btn_zone.button("⚙️ Tự động tạo ma trận & đề thi", type="primary", use_container_width=True)
         yeu_cau_bam_sat = col_check_zone.checkbox("Yêu cầu bám sát kiến thức trong tài liệu tải lên", value=True)
 
         st.markdown("##### Tỷ lệ mức độ nhận thức (%):")
@@ -249,14 +248,12 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
         st.caption("Yeu_Cau_Khac")
         note_de = st.text_area("Yêu cầu cụ thể", placeholder="Nhập yêu cầu khác....", label_visibility="collapsed", key="note_de_area")
 
-        # 🌟 VÁ LỖI TRIỆT ĐỂ: Gỡ hoàn toàn hộp cảnh báo màu hồng, kết nối ngầm với hàm an toàn
+        # --- LOGIC LIÊN KẾT HÀM AI AN TOÀN CHẠY NGẦM ---
         if run_exam_ai:
             context_text = ""
             if tai_lieu_dinh_kem is not None:
-                if tai_lieu_dinh_kem.name.endswith(".docx"):
-                    context_text = read_uploaded_docx(tai_lieu_dinh_kem)
-                elif tai_lieu_dinh_kem.name.endswith(".pdf"):
-                    context_text = read_uploaded_pdf(tai_lieu_dinh_kem)
+                if tai_lieu_dinh_kem.name.endswith(".docx"): context_text = read_uploaded_docx(tai_lieu_dinh_kem)
+                elif tai_lieu_dinh_kem.name.endswith(".pdf"): context_text = read_uploaded_pdf(tai_lieu_dinh_kem)
 
             prompt_exam = (
                 f"Hãy thiết kế một Ma trận đề thi và Đề kiểm tra chi tiết (kèm Đáp án) cho môn: {mon_de}, {khoi_de}, hình thức: {hinh_thuc}, thời gian: {tg_de}.\n"
@@ -265,48 +262,33 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
                 f"- Điền khuyết: {num_khuyet} câu ({pt_khuyet} điểm)\n- Trả lời ngắn: {num_ngan} câu ({pt_ngan} điểm)\n"
                 f"MA TRẬN MỨC ĐỘ NHẬN THỨC: Nhận biết {mz_nb}%, Thông hiểu {mz_th}%, Vận dụng {mz_vd}%, Vận dụng cao {mz_vdc}%.\n"
                 f"Yêu cầu nội dung kiến thức bổ sung: {note_de}.\n"
-                f"Tài liệu tham khảo đính kèm (nếu có):\n{context_text}\n\n"
-                f"Văn bản trả về trình bày đẹp mắt bằng Markdown. Đối với các bảng ma trận, sử dụng cấu trúc bảng kẻ dọc dạng '|'. "
-                f"Nếu bài toán hình học hoặc đồ thị cần vẽ hình, hãy chèn thẻ mẫu dạng '[GRAPH: biểu_thức_toán_học]' để vẽ hình trực quan."
+                f"Tài liệu tham khảo đính kèm:\n{context_text}\n\n"
+                f"Trả về kết quả định dạng Markdown sạch sẽ, ma trận dựng bảng dạng '|'."
             )
 
             if run_ai_prompt_safe_func is not None:
-                with st.spinner("🚀 Trợ lý AI đang liên kết API Key hệ thống và thiết kế đề thi..."):
+                with st.spinner("🚀 Trợ lý AI đang thiết kế ma trận và đề thi từ API Key hệ thống..."):
                     res_text, status = run_ai_prompt_safe_func(prompt_exam)
                     if status == "error":
-                        st.error(f"❌ Máy chủ AI hoặc API Key phản hồi sự cố: {res_text}")
+                        st.error(f"❌ Lỗi: {res_text}")
                     else:
-                        st.session_state["current_exam_designer_output"] = res_text
-                        exam_id = f"De_{mon_de.replace(' ', '_')}_{khoi_de.replace(' ', '_')}_{len(st.session_state['db_de_kiem_tra'])+1}"
+                        st.session_state["current_exam_output_raw"] = res_text
                         st.session_state["db_de_kiem_tra"].append({
-                            "id": exam_id, "mon": mon_de, "khoi": khoi_de, "hinh_thuc": hinh_thuc, "data": res_text
+                            "id": f"De_{len(st.session_state['db_de_kiem_tra'])+1}", "mon": mon_de, "khoi": khoi_de, "hinh_thuc": hinh_thuc, "data": res_text
                         })
-                        st.success(f"🎉 Khởi tạo đề kiểm tra thành công bằng mô hình {status}!")
+                        st.success(f"🎉 Khởi tạo thành công bằng mô hình {status}!")
                         st.rerun()
-            else:
-                st.error("❌ Lỗi luồng: Chưa kết nối được trình điều khiển AI tổng từ file app.py.")
 
-        if st.session_state["current_exam_designer_output"]:
+        if st.session_state["current_exam_output_raw"]:
             st.markdown("---")
-            st.markdown("### 📝 Nội dung Ma trận & Đề kiểm tra vừa sinh:")
-            st.markdown(st.session_state["current_exam_designer_output"])
-            
-            word_exam_data = export_to_docx_vietnam_standard(
-                st.session_state["current_exam_designer_output"], 
-                f"ĐỀ KIỂM TRA MÔN {mon_de.upper()} - {khoi_de.upper()}"
-            )
-            st.download_button(
-                label="📥 Tải file Word (.docx) Đề kiểm tra chuẩn Quốc hiệu về máy",
-                data=word_exam_data,
-                file_name=f"De_Kiem_Tra_{mon_de.replace(' ', '_')}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                use_container_width=True
-            )
+            st.markdown(st.session_state["current_exam_output_raw"])
+            word_exam_data = export_to_docx_vietnam_standard(st.session_state["current_exam_output_raw"], f"ĐỀ KIỂM TRA MÔN {mon_de.upper()} - {khoi_de.upper()}")
+            st.download_button(label="📥 Tải file Word (.docx) Đề kiểm tra", data=word_exam_data, file_name=f"De_Kiem_Tra_{mon_de.replace(' ', '_')}.docx", mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document", use_container_width=True)
 
     with tab_kho_luu_tru:
         st.markdown("#### 📂 Các đề kiểm tra đã được AI tự động sinh và lưu trữ")
         if not st.session_state["db_de_kiem_tra"]:
-            st.warning("✨ Chưa có đề kiểm tra nào được tạo. Thầy hãy thiết kế đề thi mới ở tab bên cạnh.")
+            st.caption("✨ Chưa có đề kiểm tra nào được tạo.")
         else:
             indices_to_delete = []
             for idx, de_info in enumerate(st.session_state["db_de_kiem_tra"]):
@@ -314,16 +296,11 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
                     st.markdown(de_info['data'])
                     h_col1, h_col2 = st.columns(2)
                     word_hist_data = export_to_docx_vietnam_standard(de_info['data'], f"ĐỀ KIỂM TRA MÔN {de_info['mon'].upper()} - {de_info['khoi'].upper()}")
-                    h_col1.download_button(
-                        label="📥 Tải file Word", data=word_hist_data, file_name=f"De_{de_info['mon'].replace(' ', '_')}.docx", key=f"dl_exam_word_{de_info['id']}", use_container_width=True
-                    )
-                    if h_col2.button("❌ Xóa đề thi khỏi kho lưu trữ", key=f"del_exam_btn_{de_info['id']}", use_container_width=True):
-                        indices_to_delete.append(idx)
-                        
+                    h_col1.download_button(label="📥 Tải file Word", data=word_hist_data, file_name=f"De_{de_info['mon'].replace(' ', '_')}.docx", key=f"dl_ex_w_{idx}", use_container_width=True)
+                    if h_col2.button("❌ Xóa đề thi", key=f"del_ex_btn_{idx}", use_container_width=True): indices_to_delete.append(idx)
             if indices_to_delete:
-                for index in sorted(indices_to_delete, reverse=True):
-                    st.session_state["db_de_kiem_tra"].pop(index)
-                st.success("🗑️ Đã xóa đề thi khỏi danh mục kho lưu trữ!")
+                for index in sorted(indices_to_delete, reverse=True): st.session_state["db_de_kiem_tra"].pop(index)
+                st.success("🗑️ Đã xóa đề thi!")
                 st.rerun()
 
     st.markdown("<div class='footer-red'>© Bản quyền thuộc về Tác giả: Lê Hồng Dưỡng | Đơn vị: Trường THCS Nguyễn Chí Thanh - phường Tân Lập - tỉnh Đắk Lắk</div>", unsafe_allow_html=True)
