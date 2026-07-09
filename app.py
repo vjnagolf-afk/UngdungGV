@@ -2,11 +2,11 @@ import streamlit as st
 import pandas as pd
 from google import genai
 
-# --- 1. PHÂN LUỒNG IMPORT CÁC MODULE ĐỘC LẬP (ĐÃ KHỬ TRÙNG LẶP) ---
+# --- 1. PHÂN LUỒNG IMPORT CÁC MODULE ĐỘC LẬP (ĐÃ SỬA CHUẨN TÊN FILE) ---
 from exam_designer import render_exam_designer_section
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
-from khbd_section_manager import render_khbd_section  # Cập nhật theo tên file thực tế của bạn
+from khbd_manager import render_khbd_section  # 🌟 Đã sửa về tên file gốc của bạn
 from danh_gia_manager import render_assessment_section
 
 from org_manager import render_org_section
@@ -53,7 +53,7 @@ st.caption("Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường TH
 st.markdown("---")
 
 ## ==================================================================================
-# --- THANH ĐIỀU HƯỚNG TỔNG (ĐÃ VÁ LỖI TRÙNG KEY ĐỘC NHẤT) ---
+# --- THANH ĐIỀU HƯỚNG TỔNG ---
 ## ==================================================================================
 st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
