@@ -340,28 +340,25 @@ def render_exam_designer_section(api_key_input, run_ai_prompt_safe_func):
         st.markdown("<div style='margin-top: 8px;'>Nhập yêu cầu khác (Tùy chọn):</div>", unsafe_allow_html=True)
         yeu_cau_khac = st.text_area("Yeu_Cau_Khac", placeholder="Nhập yêu cầu khác ....")
 # ==========================================
-# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ (ĐÃ VÁ LỖI API KEY)
+# KHỐI 5B: XỬ LÝ AI PROMPT & KHO LƯU TRỮ (ĐÃ SỬA LỖI THAM SỐ LAMBDA)
 # ==========================================
         # (Tiếp nối xử lý điều kiện bấm nút sinh đề lồng bên dưới Khối 5A)
         if btn_tao:
-            # Sửa đổi: Kiểm tra API Key từ tham số truyền vào hoặc kiểm tra trực tiếp trong Streamlit Secrets hệ thống
+            # Lấy API Key hệ thống để kiểm tra xem ứng dụng đã sẵn sàng chưa
             actual_api_key = api_key_input if api_key_input else st.secrets.get("gemini_api_key", st.secrets.get("GEMINI_API_KEY", ""))
             
-            if not actual_api_key: 
-                st.error("Hệ thống chưa cấu hình Gemini API Key! Vui lòng kiểm tra lại cấu hình Secrets hoặc Manage App.")
-            else:
-                with st.spinner("Hệ thống đang phân tích tài liệu và cấu trúc để sinh Ma trận, Đề thi chuẩn mẫu..."):
-                    try:
-                        content_de_nguon = ""
-                        if uploaded_files_de:
-                            for file in uploaded_files_de:
-                                content_de_nguon += f"\n--- TÀI LIỆU: {file.name} ---\n"
-                                if file.name.endswith('.docx'): content_de_nguon += read_uploaded_docx(file)
-                                else: content_de_nguon += read_uploaded_pdf(file)
-                        
-                        diem_tl_str = ", ".join([f"Câu {i+1} ({diem_tl_list[i]} điểm)" for i in range(int(tong_so_tl))])
-                        
-                        prompt_de = f"""Đóng vai một chuyên gia khảo thí. Hãy thiết kế Đề kiểm tra định kỳ môn {mon_de} {khoi_de}. Hình thức: {hinh_thuc}. Thời gian: {thoi_gian_de}.
+            with st.spinner("Hệ thống đang phân tích tài liệu và cấu trúc để sinh Ma trận, Đề thi chuẩn mẫu..."):
+                try:
+                    content_de_nguon = ""
+                    if uploaded_files_de:
+                        for file in uploaded_files_de:
+                            content_de_nguon += f"\n--- TÀI LIỆU: {file.name} ---\n"
+                            if file.name.endswith('.docx'): content_de_nguon += read_uploaded_docx(file)
+                            else: content_de_nguon += read_uploaded_pdf(file)
+                    
+                    diem_tl_str = ", ".join([f"Câu {i+1} ({diem_tl_list[i]} điểm)" for i in range(int(tong_so_tl))])
+                    
+                    prompt_de = f"""Đóng vai một chuyên gia khảo thí. Hãy thiết kế Đề kiểm tra định kỳ môn {mon_de} {khoi_de}. Hình thức: {hinh_thuc}. Thời gian: {thoi_gian_de}.
 Cấu trúc điểm (Tỷ lệ {nb}-{th}-{vd}-{vdc}):
 - TRẮC NGHIỆM ({tong_so_tn} câu - {tong_diem_tn} điểm):
  + {tn_1_dap_an} câu nhiều lựa chọn ({diem_tn_1} điểm)
@@ -371,10 +368,10 @@ Cấu trúc điểm (Tỷ lệ {nb}-{th}-{vd}-{vdc}):
 - TỰ LUẬN ({tong_so_tl} câu - {tong_diem_tl_auto} điểm). Điểm chi tiết: {diem_tl_str}.
 Yêu cầu khác: {yeu_cau_khac}
 """
-                        if uu_tien_de and content_de_nguon:
-                            prompt_de += f"\n\nBẮT BUỘC BÁM SÁT 100% KIẾN THỨC TÀI LIỆU SAU ĐÂY:\n{content_de_nguon}"
-                            
-                        prompt_de += """\n
+                    if uu_tien_de and content_de_nguon:
+                        prompt_de += f"\n\nBẮT BUỘC BÁM SÁT 100% KIẾN THỨC TÀI LIỆU SAU ĐÂY:\n{content_de_nguon}"
+                        
+                    prompt_de += """\n
 LƯU Ý VỀ BỐ CỤC VÀ ĐỊNH DẠNG (BẮT BUỘC TUÂN THỦ NGHIÊM NGẶT):
 1. TUYỆT ĐỐI KHÔNG DÙNG ký hiệu LaTeX ($ hay $$). Sử dụng các ký tự Toán học Unicode chuẩn (VD: √, ½, ², ³, Δ, π, α, β, ➔). Viết phân số dưới dạng ngang (Ví dụ: (2h)/g hoặc g/(2v_0^2)).
 2. Sử dụng thẻ HTML <sub>...</sub> và <sup>...</sup> cho chỉ số (VD: H<sub>2</sub>O, x<sup>2</sup>).
@@ -391,22 +388,22 @@ PHẦN 4. ĐÁP ÁN VÀ BIỂU ĐIỂM CHẤM
 - I. TRẮC NGHIỆM: BẮT BUỘC KẺ BẢNG MARKDOWN DẠNG LƯỚI NGANG (Cột 1 là Câu 1, 2, 3..., Cột 2 là Đáp án A, B, C...).
 - II. TỰ LUẬN: BẮT BUỘC KẺ BẢNG MARKDOWN gồm 2 cột (Nội dung trả lời | Điểm) trình bày barem điểm chi tiết từng ý.
 """
-                        # Chạy hàm với API key thực tế đã nhận diện từ hệ thống
-                        result_text, _ = run_ai_prompt_safe_func(prompt_de, actual_api_key)
+                    # ĐÃ SỬA LỖI: Chỉ truyền đúng 1 tham số prompt_de vào hàm lambda theo đúng cấu trúc phôi gốc
+                    result_text, _ = run_ai_prompt_safe_func(prompt_de)
+                    
+                    ten_de_moi = f"Đề {mon_de} - {khoi_de} ({thoi_gian_de})"
+                    st.session_state["db_de_kiem_tra"].append({
+                        "ten_de": ten_de_moi,
+                        "mon": mon_de,
+                        "khoi": khoi_de,
+                        "noi_dung": result_text
+                    })
+                    
+                    st.success(" Đã tạo đề thi thành công! Thầy/Cô vui lòng chuyển sang thẻ THƯ MỤC ĐỀ ĐÃ XÂY DỰNG để xem và bấm nút gửi lên Google Sheet.")
                         
-                        ten_de_moi = f"Đề {mon_de} - {khoi_de} ({thoi_gian_de})"
-                        st.session_state["db_de_kiem_tra"].append({
-                            "ten_de": ten_de_moi,
-                            "mon": mon_de,
-                            "khoi": khoi_de,
-                            "noi_dung": result_text
-                        })
-                        
-                        st.success(" Đã tạo đề thi thành công! Thầy/Cô vui lòng chuyển sang thẻ THƯ MỤC ĐỀ ĐÃ XÂY DỰNG để xem và bấm nút gửi lên Google Sheet.")
-                            
-                    except Exception as error_ai:
-                        st.error(f"Lỗi hệ thống AI: {error_ai}")
-                        
+                except Exception as error_ai:
+                    st.error(f"Lỗi hệ thống AI: {error_ai}")
+                    
         st.markdown("<div class='footer-red'>© Bản quyền thuộc về Tác giả: Lê Hồng Dưỡng | Đơn vị: Trường THCS Nguyễn Chí Thanh – phường Tân Lập - tỉnh Đắk Lắk</div>", unsafe_allow_html=True)
         
     with tab_kho_luu_tru:
