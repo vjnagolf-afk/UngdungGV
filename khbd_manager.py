@@ -8,6 +8,20 @@ from docx.oxml.ns import qn
 import io
 import re
 from pypdf import PdfReader
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+
+# ================= CẤU HÌNH GOOGLE SHEETS =================
+SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' # ID dùng chung của hệ thống
+
+def get_khbd_sheet():
+    creds_dict = dict(st.secrets["GOOGLE_KEY"])
+    scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    # Trỏ dữ liệu vào đúng tab KHBD
+    return client.open_by_key(SHEET_ID).worksheet("KHBD")
 
 # --- HÀM TRÍCH XUẤT VĂN BẢN VÀ LỌC ẢNH TRÙNG LẶP ---
 def extract_context_from_uploaded_files(uploaded_files):
@@ -215,6 +229,7 @@ def export_khbd_to_docx(markdown_content, images_list):
     bio = io.BytesIO()
     doc.save(bio)
     return bio.getvalue()
+
 # --- GIAO DIỆN CHÍNH CỦA PHÂN HỆ ---
 def render_khbd_section(run_ai_prompt_safe_func):
     
@@ -260,7 +275,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
                 st.warning("⚠️ Vui lòng nạp học liệu tham khảo để AI bám sát dữ liệu nguồn!")
             else:
                 with st.spinner("🧠 Trợ lý AI đang nghiên cứu kỹ dữ liệu nguồn đa file và tiến hành lập tiến trình bài dạy..."):
-                    from khbd_manager import render_khbd_section
                     văn_bản_nguồn, danh_sách_ảnh = extract_context_from_uploaded_files(tai_hoc_lieu)
                     st.session_state["kho_anh_trich_xuat"] = danh_sách_ảnh
 
@@ -307,7 +321,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
 
         with col_btn1:
             st.write(""); st.write("")
-            from khbd_manager import export_khbd_to_docx
             docx_data = export_khbd_to_docx(st.session_state["ket_qua_giao_an"], st.session_state["kho_anh_trich_xuat"]) if st.session_state["ket_qua_giao_an"] else b""
             st.download_button(
                 label="📥 Tải file Word (.docx) chuẩn về máy",
@@ -322,10 +335,29 @@ def render_khbd_section(run_ai_prompt_safe_func):
         with st.container(border=True):
             if st.session_state["ket_qua_giao_an"]:
                 st.markdown(st.session_state["ket_qua_giao_an"])
-                if st.button("📥 Lưu vào Thư viện hệ thống", use_container_width=True):
-                    if ten_bai:
-                        st.session_state["lich_su_khbd"].append({"Tên bài": ten_bai, "Môn": mon_hoc, "Lớp": lop, "Nội dung": st.session_state["ket_qua_giao_an"], "Kho_anh": st.session_state["kho_anh_trich_xuat"]})
-                        st.success("✅ Đã lưu giáo án vào Thư viện thành công!")
+                
+                # NÂNG CẤP BỘ LƯU TRỮ KÉP (Local + Cloud)
+                col_save_local, col_save_cloud = st.columns(2)
+                
+                with col_save_local:
+                    if st.button("📥 Lưu vào Thư viện hệ thống (Tạm thời)", use_container_width=True):
+                        if ten_bai:
+                            st.session_state["lich_su_khbd"].append({"Tên bài": ten_bai, "Môn": mon_hoc, "Lớp": lop, "Nội dung": st.session_state["ket_qua_giao_an"], "Kho_anh": st.session_state["kho_anh_trich_xuat"]})
+                            st.success("✅ Đã lưu giáo án vào Thư viện tạm thời thành công!")
+                
+                with col_save_cloud:
+                    if st.button("☁️ Lưu lên Đám mây (Google Sheets)", type="primary", use_container_width=True):
+                        if ten_bai:
+                            try:
+                                sheet = get_khbd_sheet()
+                                ngay_luu = datetime.now().strftime("%Y-%m-%d %H:%M:%S")
+                                # Lưu 5 cột: Tên bài, Môn, Lớp, Nội dung KHBD, Thời gian
+                                sheet.append_row([str(ten_bai), str(mon_hoc), str(lop), str(st.session_state["ket_qua_giao_an"]), str(ngay_luu)])
+                                st.toast("Đã lưu an toàn lên Google Sheets!", icon="✅")
+                                st.success("✅ Đã đồng bộ an toàn lên Google Sheets!")
+                            except Exception as e:
+                                st.error(f"Lỗi khi lưu lên Đám mây: {e}")
+
             else:
                 st.caption("Bài soạn sau khi khởi tạo bằng AI sẽ hiển thị tại đây...")
 
@@ -340,7 +372,6 @@ def render_khbd_section(run_ai_prompt_safe_func):
                 with col_exp:
                     with st.expander(f"📚 {idx+1}. {item['Tên bài']} - Lớp {item['Lớp']}"):
                         st.markdown(item["Nội dung"])
-                        from khbd_manager import export_khbd_to_docx
                         saved_docx = export_khbd_to_docx(item["Nội dung"], item.get("Kho_anh", []))
                         st.download_button(
                             label="📥 Tải lại bản Word (.docx)",
