@@ -102,7 +102,6 @@ def render_thang_tab(run_ai_prompt_safe=None):
     st.write("---")
     ghi_chu_them = st.text_input("Yêu cầu bổ sung đặc biệt cho tháng này (nếu có):", placeholder="Ví dụ: Tập trung nề nếp thi đua...", key="txt_ghi_chu_them")
     
-    # Khởi tạo khóa bộ nhớ chính của text_area trong session_state để lưu văn bản xem trước ổn định
     if "ta_main_editor" not in st.session_state:
         st.session_state["ta_main_editor"] = ""
         
@@ -111,7 +110,7 @@ def render_thang_tab(run_ai_prompt_safe=None):
             with st.spinner(f"AI đang thiết lập kế hoạch {selected_thang}..."):
                 prompt_he_thong = f"""
                 Bạn là trợ lý AI cho giáo viên chủ nhiệm THCS Việt Nam. Hãy lập bản kế hoạch công tác chủ nhiệm chi tiết cho lớp {selected_lop} trong {selected_thang}.
-                YÊU CẦU ĐẦU RA PHẢI PHÂN TÁCH DÒNG DỌC RÕ RÀNG THEO CẤU TRÚC:
+                YÊU CẦU ĐẦU RA PHẢI PHÂN TÁCH DÒNG DỌC RÕ RÀNG THEO CẤU TRÚC SAU:
                 
                 KẾ HOẠCH THÁNG {selected_thang.replace('Tháng ', '')}
                 1. Chủ điểm: [Tên chủ điểm giáo dục tương ứng tháng]
@@ -126,21 +125,18 @@ def render_thang_tab(run_ai_prompt_safe=None):
                 Ghi chú từ GV: {ghi_chu_them}
                 """
                 response = run_ai_prompt_safe(prompt_he_thong)
-                # ĐỒNG BỘ TRỰC TIẾP: Ghi đè thẳng vào KEY của text_area giúp cập nhật màn hình lập tức
                 st.session_state["ta_main_editor"] = response
         else:
             st.info("Hệ thống kết nối AI đang được đồng bộ...")
 
     st.write("#### 📝 KHUNG VĂN BẢN KẾ HOẠCH THÁNG (Xem trước & Sửa đổi)")
     
-    # Text area lấy trực tiếp dữ liệu từ key="ta_main_editor"
     edited_text = st.text_area(
         label="Nội dung kế hoạch công tác (Nhấn vào để sửa đổi):",
         height=450,
         key="ta_main_editor"
     )
     
-    # Hiển thị nút tải Word khi vùng xem trước có nội dung văn bản
     if edited_text.strip():
         st.write("")
         file_name_doc = f"Ke_hoach_chu_nhiem_{selected_lop}_{selected_thang.replace('/', '_')}.docx"
@@ -153,3 +149,18 @@ def render_thang_tab(run_ai_prompt_safe=None):
             mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
             key="btn_download_word"
         )
+import streamlit as st
+from chu_nhiem_nam_hoc import render_nam_hoc_tab
+from chu_nhiem_thang import render_thang_tab
+
+def render_chu_nhiem_section(run_ai_prompt_safe=None):
+    tab_tong_quan, tab_hang_thang = st.tabs([
+        "📊 Đặc điểm tình hình & Kế hoạch năm học", 
+        "📅 Kế hoạch công tác theo Tháng (AI Tự động)"
+    ])
+    
+    with tab_tong_quan:
+        render_nam_hoc_tab()
+
+    with tab_hang_thang:
+        render_thang_tab(run_ai_prompt_safe)
