@@ -1,7 +1,7 @@
 import streamlit as st
 import pandas as pd
 
-def render_tab_7(run_ai_prompt_safe=None):
+def render_chu_nhiem_section(run_ai_prompt_safe=None):
     st.subheader("📋 7. KẾ HOẠCH CÔNG TÁC CHỦ NHIỆM LỚP")
     st.caption("Hệ sinh thái số hỗ trợ giáo viên chủ nhiệm quản lý lớp học và lập kế hoạch thông minh.")
     
@@ -31,7 +31,7 @@ def render_tab_7(run_ai_prompt_safe=None):
     with tab_hoc_sinh:
         st.write("#### 📊 Danh sách học sinh cần lưu ý & Phân công")
         
-        # Đã sửa lỗi điền mảng [1, 2, 3] đầy đủ cho cột STT ở dòng dưới đây:
+        # Danh dách mẫu dạng từ điển chuẩn Python
         data = {
             "STT":,
             "Họ và tên": ["Nguyễn Văn A", "Trần Thị B", "Lê Hoàng C"],
@@ -70,10 +70,8 @@ def render_tab_7(run_ai_prompt_safe=None):
             else:
                 if run_ai_prompt_safe is not None:
                     with st.spinner("AI đang suy nghĩ và lập kế hoạch cho bạn..."):
-                        # Gọi hàm xử lý AI dùng chung của toàn hệ thống
                         response = run_ai_prompt_safe(user_prompt)
                         st.markdown("### 🌟 Kết quả từ Trợ lý AI:")
                         st.write(response)
                 else:
-                    st.warning("Hệ thống chưa truyền hàm kết nối AI từ app.py. Dưới đây là phản hồi mẫu:")
-                    st.info("AI khuyên bạn nên: 1. Gặp riêng học sinh lắng nghe tâm tư; 2. Phối hợp chặt chẽ với phụ huynh học sinh; 3. Tổ chức trò chơi gắn kết tập thể tại lớp.")
+                    st.warning("Hệ thống chưa truyền hàm kết nối AI từ app.py.")
