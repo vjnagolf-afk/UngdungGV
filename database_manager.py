@@ -1,7 +1,6 @@
-# database_manager.py - Khóa cứng đặc quyền Admin qua Cookie trình duyệt (Không mất khi F5)
+# database_manager.py
 import sqlite3
 import os
-import streamlit as st
 
 DB_PATH = "teacher_assistant.db"
 
@@ -33,27 +32,6 @@ def init_sqlite_database():
     """)
     conn.commit()
     conn.close()
-
-def check_if_admin_device():
-    """
-    Thuật toán nhận diện Admin tối ưu sử dụng Local Storage của Streamlit.
-    Ghi nhớ trình duyệt của thầy vĩnh viễn, kể cả F5 hoặc tắt máy mở lại vẫn giữ quyền Admin.
-    """
-    init_sqlite_database()
-    
-    # 🌟 Kiểm tra tham số URL bí mật ở lượt kích hoạt đầu tiên
-    url_params = st.query_params
-    if url_params.get("admin") == "true" or url_params.get("role") == "admin":
-        # Lưu trạng thái Admin vào bộ nhớ cục bộ chạy xuyên suốt các phiên của máy thầy
-        st.session_state["is_verified_admin_permanent"] = True
-    
-    # Nếu trong phiên làm việc hiện tại chưa có biến này, mặc định kiểm tra dự phòng
-    if "is_verified_admin_permanent" not in st.session_state:
-        # Dự phòng: Đọc cookie ẩn cấu hình mà Streamlit ghi nhớ trên trình duyệt máy thầy
-        # Do Streamlit lưu cache cục bộ theo cụm luồng người dùng nên bộ nhớ này rất bền vững
-        st.session_state["is_verified_admin_permanent"] = False
-
-    return st.session_state["is_verified_admin_permanent"]
 
 def inject_demo_data():
     """Hàm bổ trợ nạp nhanh nhân sự demo cho tổ chuyên môn"""
