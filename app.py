@@ -1,9 +1,10 @@
-# app.py - Bản vá khóa cứng quyền Admin vĩnh viễn vắt qua F5 và sắp xếp lại bố cục Sidebar
+# app.py - Tích hợp bộ quét IP Mạng thông minh khóa cứng quyền Admin vĩnh viễn cho mọi Tab mới
 import streamlit as st
 import pandas as pd
 import sqlite3
 import os
 import sys
+import urllib.request
 
 # THUẬT TOÁN ĐƯỜNG DẪN: Ép hệ thống tìm module trong cùng thư mục chạy ứng dụng
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -27,6 +28,40 @@ from stem_manager import render_stem_section
 from chu_nhiem_manager import render_chu_nhiem_section 
 
 st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
+
+# --- THUẬT TOÁN WHITELIST IP: KHÓA CỨNG ĐỊA CHỈ IP CHÍNH CHỦ DỰ ÁN ---
+def get_current_public_ip():
+    """Tự động quét địa chỉ IP công cộng của thiết bị đang kết nối mạng"""
+    try:
+        # Gọi dịch vụ kiểm tra IP độc lập của Amazon
+        return urllib.request.urlopen('https://amazonaws.com').read().decode('utf-8').strip()
+    except:
+        return "127.0.0.1"
+
+# 🌟 BƯỚC THIẾT LẬP: Thầy lấy địa chỉ IP mạng máy tính của thầy dán vào danh sách dưới đây
+# (Mẹo lấy IP: Thầy mở tab mới gõ "my ip" lên Google, copy dãy số dạng 113.161... dán đè vào đây)
+ADMIN_IP_WHITELIST = [
+    "113.161.220.105",  # Ví dụ địa chỉ IP mạng Internet trường THCS Nguyễn Chí Thanh
+    "14.161.12.34"      # Thầy có thể thêm nhiều IP khác nhau (Ví dụ IP mạng Wifi nhà riêng của thầy)
+]
+
+current_device_ip = get_current_public_ip()
+
+# 🚀 TỰ ĐỘNG KHÓA CỨNG QUYỀN ADMIN: Mở tab mới hay F5 chỉ cần trùng IP mạng là tự động nhận diện Admin
+if current_device_ip in ADMIN_IP_WHITELIST:
+    is_admin_owner = True
+else:
+    # Dự phòng: Nếu thầy đi công tác mạng khác, thầy vẫn gõ mật mã "123456" vào ô để mở Admin tạm thời
+    MAT_MA_ADMIN_CỐ_ĐỊNH = "123456"
+    if "current_entered_password" not in st.session_state:
+        st.session_state["current_entered_password"] = ""
+    
+    url_params = st.query_params
+    if url_params.get("admin") == MAT_MA_ADMIN_CỐ_ĐỊNH:
+        st.session_state["current_entered_password"] = MAT_MA_ADMIN_CỐ_ĐỊNH
+        
+    is_admin_owner = (st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH)
+
 
 # 🚀 BỘ VÁ CSS: Khử padding/margin thừa giữa các phần tử trong Sidebar
 st.markdown("""
@@ -68,19 +103,8 @@ phan_he = st.sidebar.radio(
 st.sidebar.markdown("---")
 
 # ==================================================================================
-# --- 🚀 KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA SƠ ĐỒ) ---
+# --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA SƠ ĐỒ) ---
 # ==================================================================================
-# Đặt bộ kiểm tra mật mã lên đầu luồng ẩn để gán đặc quyền hiển thị cho Menu tác nghiệp
-# Thầy tự cấu hình mật mã của mình ở đây (Ví dụ: "123456")
-MAT_MA_ADMIN_CỐ_ĐỊNH = "123456"
-
-# Đọc mật mã nhập vào từ bộ nhớ tạm để duy trì trạng thái khi click chọn phân hệ con
-if "current_entered_password" not in st.session_state:
-    st.session_state["current_entered_password"] = ""
-
-# Đánh giá quyền Admin dựa trên mật mã đang lưu trong phiên
-is_admin_owner = (st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH)
-
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     st.sidebar.markdown("### 🛠️ CHỨC NĂNG GIÁO VIÊN")
     menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB","6. Thiết kế bài dạy STEM","7. Kế hoạch công tác chủ nhiệm lớp"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
@@ -141,44 +165,32 @@ else:  # Phân hệ Quản lý tổ chuyên môn
 st.sidebar.markdown("---")
 
 # ==================================================================================
-# --- 🚀 KHỐI HIỂN THỊ TRẠNG THÁI TÀI KHOẢN (VỊ TRÍ 3 - ĐẨY XUỐNG DƯỚI MENU TÁC NGHIỆP) ---
+# --- KHỐI HIỂN THỊ TRẠNG THÁI TÀI KHOẢN (VỊ TRÍ 3 - DƯỚI CÙNG SIDEBAR) ---
 # ==================================================================================
 st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
 
-# Thuật toán đọc mã PIN kích hoạt nhanh từ tham số đường dẫn URL bí mật (?admin=123456)
-url_params = st.query_params
-url_pwd = url_params.get("admin", "")
-
-if url_pwd == MAT_MA_ADMIN_CỐ_ĐỊNH:
-    st.session_state["current_entered_password"] = MAT_MA_ADMIN_CỐ_ĐỊNH
-
-# Ô nhập mật mã trên giao diện
-mat_ma_nhap = st.sidebar.text_input(
-    "Mật mã định danh Admin (Nếu có):", 
-    value=st.session_state["current_entered_password"], 
-    type="password", 
-    key="admin_password_input_field_v2"
-)
-
-# Đồng bộ giá trị gõ vào bộ nhớ tạm
-if mat_ma_nhap:
-    st.session_state["current_entered_password"] = mat_ma_nhap
-
-# Kết luận quyền hiển thị giao diện xanh/vàng
-if st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH:
-    is_admin_owner = True
+if current_device_ip in ADMIN_IP_WHITELIST:
     st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-    st.sidebar.caption("Tự động kích hoạt đặc quyền chạy trực tiếp bằng Key hệ thống.")
+    st.sidebar.caption(f"Nhận diện tự động qua IP: `{current_device_ip}`. Đặc quyền chạy trực tiếp bằng Key hệ thống vĩnh viễn.")
     st.session_state["gv_api_key_input"] = ""
 else:
-    is_admin_owner = False
-    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
-    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
-    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
-    if st.session_state["gv_api_key_input"]:
-        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
+    # Dự phòng nếu thầy ở vùng mạng khác thì hiện ô nhập mật mã/Key như cũ
+    mat_ma_nhap = st.sidebar.text_input("Mật mã định danh Admin (Nếu có):", type="password", key="admin_password_input_field_v2")
+    if mat_ma_nhap:
+        st.session_state["current_entered_password"] = mat_ma_nhap
 
-# --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ (XUYÊN SUỐT DƯỚI CHÂN TRANG SIDEBAR) ---
+    if st.session_state.get("current_entered_password") == "123456":
+        st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
+        st.sidebar.caption("Kích hoạt đặc quyền qua mật mã thành công.")
+        st.session_state["gv_api_key_input"] = ""
+    else:
+        st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
+        st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
+        st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
+        if st.session_state["gv_api_key_input"]:
+            st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
+
+# --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ ---
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.markdown("""
     <div style='text-align: center; border-top: 1px solid #ddd; padding-top: 12px; margin-top: 5px;'>
