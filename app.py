@@ -1,4 +1,4 @@
-# app.py - Bản vá thu hẹp khoảng cách Sidebar và tích hợp thông tin Tác giả
+# app.py - Khớp cấu trúc GitHub 2026, vá lỗi lệch tham số KHBD & hạ trạng thái tài khoản
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -13,11 +13,11 @@ if current_dir not in sys.path:
 from database_manager import check_if_admin_device, inject_demo_data, DB_PATH
 from ai_service import run_ai_prompt_safe
 
-# Nhúng các phân hệ tác nghiệp vệ tinh của thầy/cô
+# 🚀 ĐỒNG BỘ ĐÚNG TÊN FILE VÀ HÀM THEO CẤU TRÚC THƯ MỤC GITHUB CỦA THẦY/CÔ
 from exam_designer import render_exam_designer_section 
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
-from khbd_manager import render_khbd_section  
+from khbd_manager import render_khbd_section  # Chính xác file khbd_manager.py
 from danh_gia_manager import render_assessment_section
 
 from org_manager import render_org_section
@@ -34,27 +34,6 @@ if "db_thanh_vien" not in st.session_state: st.session_state["db_thanh_vien"] = 
 if "db_phan_cong_hien_tai" not in st.session_state: st.session_state["db_phan_cong_hien_tai"] = []
 
 st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
-
-# 🚀 BỘ VÁ CSS: Khử toàn bộ padding/margin thừa giữa các phần tử trong Sidebar
-st.markdown("""
-    <style>
-        /* Thu hẹp khoảng cách giữa các phần tử widget trong Sidebar */
-        [data-testid="stSidebarUserContent"] {
-            padding-top: 1.5rem !important;
-            padding-bottom: 1.5rem !important;
-        }
-        [data-testid="stSidebarUserContent"] .stMarkdown, 
-        [data-testid="stSidebarUserContent"] .stRadio, 
-        [data-testid="stSidebarUserContent"] .stSelectbox {
-            margin-bottom: -0.4rem !important;
-        }
-        /* Thu hẹp khoảng cách của các đường kẻ gạch ngang hr */
-        [data-testid="stSidebarUserContent"] hr {
-            margin-top: 0.6rem !important;
-            margin-bottom: 0.6rem !important;
-        }
-    </style>
-""", unsafe_allow_html=True)
 
 # Tiêu đề giao diện chính
 st.markdown("<h1 style='text-align: center; color: darkred; font-weight: bold;'>🔰 HỆ SINH THÁI SỐ - HỖ TRỢ GIÁO VIÊN</h1>", unsafe_allow_html=True)
@@ -82,7 +61,8 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB","6. Thiết kế bài dạy STEM","7. Kế hoạch công tác chủ nhiệm lớp"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
     
     if menu == "1. Thiết kế KHBD": 
-        render_khbd_section(lambda p, m: run_ai_prompt_safe(p, m, is_admin_owner))
+        # 🚀 VÁ LỖI CỐT LÕI: Đồng bộ đúng 1 tham số trùng khớp với hàm trong khbd_manager.py
+        render_khbd_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "2. Thiết kế Đề KT": 
         render_exam_designer_section(lambda p, m: run_ai_prompt_safe(p, m, is_admin_owner))
     elif menu == "3. Đánh giá HS": 
@@ -135,7 +115,7 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             st.dataframe(df_tv, use_container_width=True)
 
 # ==================================================================================
-# --- KHỐI HIỂN THỊ Ô NHẬP KEY THEO THIẾT BỊ ĐỐI TƯỢNG (VỊ TRÍ 3 - Ở DƯỚI) ---
+# --- KHỐI HIỂN THỊ Ô NHẬP KEY THEO THIẾT BỊ ĐỐI TƯỢNG (VỊ TRÍ 3 - DƯỚI CÙNG SIDEBAR) ---
 # ==================================================================================
 st.sidebar.markdown("---")
 st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
@@ -152,7 +132,7 @@ else:
         st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
 
 # ==================================================================================
-# --- 🚀 KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ (VỊ TRÍ 4 - XUYÊN SUỐT DƯỚI CÙNG SIDEBAR) ---
+# --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ (XUYÊN SUỐT DƯỚI CHÂN TRANG SIDEBAR) ---
 # ==================================================================================
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.markdown("""
