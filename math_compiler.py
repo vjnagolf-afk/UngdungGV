@@ -1,4 +1,4 @@
-# math_compiler.py
+# math_compiler.py - Bản vá đồng bộ Times New Roman cỡ 14 cho tất cả công thức Toán
 import io
 import re
 import numpy as np
@@ -30,18 +30,28 @@ def generate_plot_stream(eq_str):
     return buf
 
 def build_omml_fraction(num_str, den_str):
-    """Tạo cấu trúc XML Math phân số chuẩn của Microsoft Word và ép cỡ chữ 14pt (28 hps)"""
+    """Tạo cấu trúc XML Math phân số chuẩn của Word và áp font Times New Roman cỡ 14pt (val='28')"""
     return (
         f'<m:f>'
-        f'<m:num><m:r><m:rPr><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr><m:t>{num_str}</m:t></m:r></m:num>'
-        f'<m:den><m:r><m:rPr><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr><m:t>{den_str}</m:t></m:r></m:den>'
+        f'<m:num><m:r>'
+        f'<m:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr>'
+        f'<m:t>{num_str}</m:t>'
+        f'</m:r></m:num>'
+        f'<m:den><m:r>'
+        f'<m:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr>'
+        f'<m:t>{den_str}</m:t>'
+        f'</m:r></m:den>'
         f'</m:f>'
     )
 
 def convert_latex_to_omml(latex_str):
-    """Biến đổi mã nguồn LaTeX thành khối Office Math XML đồng bộ chuẩn cỡ chữ 14"""
+    """Biến đổi mã nguồn LaTeX thành khối Office Math XML đồng bộ chuẩn cỡ chữ 14 và font Times New Roman"""
     latex_str = latex_str.strip()
-    latex_str = latex_str.replace(r'\pi', 'π').replace(r'\infty', '∞').replace(r'\times', '×').replace(r'\cdot', '·')
+    
+    # 🌟 BỔ SUNG TỰ ĐỘNG CHUYỂN ĐỔI TOÀN BỘ KÝ HIỆU TOÁN HỌC SƯ PHẠM
+    latex_str = latex_str.replace(r'\pi', 'π').replace(r'\infty', '∞')
+    latex_str = latex_str.replace(r'\times', '×').replace(r'\cdot', '·')
+    latex_str = latex_str.replace(r'\approx', '≈').replace(r'\times', '×')
     
     latex_str = re.sub(r'\(\((.*?)\)/\((.*?)\)\)', r'(\1)/(\2)', latex_str)
     latex_str = re.sub(r'\((.*?)\)/\((.*?)\)', r'(\1)/(\2)', latex_str)
@@ -64,8 +74,8 @@ def convert_latex_to_omml(latex_str):
 
     latex_str = re.sub(r'\^\{([^}]+)\}', r'^\1', latex_str)
     
-    # 🌟 ÉP CỠ CHỮ 14PT VÀO KHỐI THẺ ĐỊNH DẠNG CHÍNH CỦA ĐOẠN TOÁN (28 half-points = 14pt)
-    omml_xml = f'<m:oMath {nsdecls("m")}><m:r><m:rPr><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr>'
+    # 🌟 ÉP ĐỒNG BỘ THUỘC TÍNH FONT CHỮ VÀO THẺ m:rPr CỦA KHỐI TOÁN CHUYÊN DỤNG (sz val='28' nghĩa là 14pt)
+    omml_xml = f'<m:oMath {nsdecls("m")}><m:r><m:rPr><w:rFonts w:ascii="Times New Roman" w:hAnsi="Times New Roman"/><w:sz w:val="28"/><w:szCs w:val="28"/></m:rPr>'
     if '<m:f>' in latex_str:
         omml_xml += f'</m:r>{latex_str}'
     else:
@@ -80,7 +90,6 @@ def process_runs_with_math(paragraph, text):
     """Phân tách chuỗi, tự động bôi đậm ký tự đầu đáp án A., B., C., D."""
     text_clean = text.strip()
     
-    # 🚀 TỰ ĐỘNG BÔI ĐẬM CÁC CHỮ CÁI ĐÁP ÁN ĐẦU DÒNG A., B., C., D.
     match_choice = re.match(r'^([A-D]\.\s*)(.*)', text_clean)
     if match_choice:
         prefix = match_choice.group(1)
@@ -88,9 +97,10 @@ def process_runs_with_math(paragraph, text):
         run_prefix = paragraph.add_run(prefix)
         run_prefix.bold = True
         run_prefix.font.name = 'Times New Roman'
+        run_prefix.font.size = Pt(14)
         text_clean = remain_text
 
-    parts = re.split(r'(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)', text_clean)
+    parts = re.split(r'(\$\$[\s\S]*?\  đô la|\$[\s\S]*?\$)', text_clean)
     for part in parts:
         if not part:
             continue
@@ -103,6 +113,7 @@ def process_runs_with_math(paragraph, text):
                 else:
                     run = paragraph.add_run(part)
                     run.font.name = 'Times New Roman'
+                    run.font.size = Pt(14)
         else:
             bold_parts = part.split('**')
             for i, b_part in enumerate(bold_parts):
@@ -115,11 +126,16 @@ def process_runs_with_math(paragraph, text):
                         run = paragraph.add_run(s_part[5:-6])
                         run.bold = is_bold
                         run.font.subscript = True
+                        run.font.name = 'Times New Roman'
+                        run.font.size = Pt(14)
                     elif s_part.startswith('<sup>') and s_part.endswith('</sup>'):
                         run = paragraph.add_run(s_part[5:-6])
                         run.bold = is_bold
                         run.font.superscript = True
+                        run.font.name = 'Times New Roman'
+                        run.font.size = Pt(14)
                     else:
                         run = paragraph.add_run(s_part)
                         run.bold = is_bold
                         run.font.name = 'Times New Roman'
+                        run.font.size = Pt(14)
