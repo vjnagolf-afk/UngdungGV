@@ -1,10 +1,9 @@
-# app.py - Tích hợp bộ nhớ LocalStorage vĩnh viễn, chống bắt nhập lại mật mã khi F5
+# app.py - Bản vá khóa cứng quyền Admin vĩnh viễn vắt qua F5 và sắp xếp lại bố cục Sidebar
 import streamlit as st
 import pandas as pd
 import sqlite3
 import os
 import sys
-import streamlit.components.v1 as components
 
 # THUẬT TOÁN ĐƯỜNG DẪN: Ép hệ thống tìm module trong cùng thư mục chạy ứng dụng
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -33,17 +32,17 @@ st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
 st.markdown("""
     <style>
         [data-testid="stSidebarUserContent"] {
-            padding-top: 1.5rem !important;
-            padding-bottom: 1.5rem !important;
+            padding-top: 1.0rem !important;
+            padding-bottom: 1.0rem !important;
         }
         [data-testid="stSidebarUserContent"] .stMarkdown, 
         [data-testid="stSidebarUserContent"] .stRadio, 
         [data-testid="stSidebarUserContent"] .stSelectbox {
-            margin-bottom: -0.4rem !important;
+            margin-bottom: -0.2rem !important;
         }
         [data-testid="stSidebarUserContent"] hr {
-            margin-top: 0.6rem !important;
-            margin-bottom: 0.6rem !important;
+            margin-top: 0.5rem !important;
+            margin-bottom: 0.5rem !important;
         }
     </style>
 """, unsafe_allow_html=True)
@@ -53,7 +52,9 @@ st.markdown("<h1 style='text-align: center; color: darkred; font-weight: bold;'>
 st.markdown("<p style='text-align: center; color: #0056b3; font-weight: bold; font-size: 16px;'>Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường THCS Nguyễn Chí Thanh - Phường Tân Lập tỉnh Đắk Lắk</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- MENU ĐIỀU HƯỚNG TỔNG TẠI SIDEBAR (VỊ TRÍ 1 - TRÊN CÙNG) ---
+# ==================================================================================
+# --- THANH ĐIỀU HƯỚNG TỔNG TẠI SIDEBAR (VỊ TRÍ 1 - TRÊN CÙNG) ---
+# ==================================================================================
 st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
 
@@ -67,71 +68,19 @@ phan_he = st.sidebar.radio(
 st.sidebar.markdown("---")
 
 # ==================================================================================
-# --- 🚀 THUẬT TOÁN ĐỌC/GHI BỘ NHỚ TRÌNH DUYỆT (LOCAL STORAGE) QUA JAVASCRIPT ---
+# --- 🚀 KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA SƠ ĐỒ) ---
 # ==================================================================================
+# Đặt bộ kiểm tra mật mã lên đầu luồng ẩn để gán đặc quyền hiển thị cho Menu tác nghiệp
+# Thầy tự cấu hình mật mã của mình ở đây (Ví dụ: "123456")
 MAT_MA_ADMIN_CỐ_ĐỊNH = "123456"
 
-# Khởi tạo biến lưu trữ mật mã trong bộ nhớ Streamlit nếu chưa có
-if "saved_admin_password" not in st.session_state:
-    st.session_state["saved_admin_password"] = ""
+# Đọc mật mã nhập vào từ bộ nhớ tạm để duy trì trạng thái khi click chọn phân hệ con
+if "current_entered_password" not in st.session_state:
+    st.session_state["current_entered_password"] = ""
 
-# Đọc mật mã ẩn từ URL được chuyển hướng từ JavaScript
-query_params = st.query_params
-if "get_pwd" in query_params:
-    st.session_state["saved_admin_password"] = query_params["get_pwd"]
+# Đánh giá quyền Admin dựa trên mật mã đang lưu trong phiên
+is_admin_owner = (st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH)
 
-# Nhúng đoạn mã HTML/JS chạy ngầm để đọc và tự động điền mật mã khi F5
-components.html(f"""
-    <script>
-        // 1. Kiểm tra xem máy thầy đã từng lưu mật mã admin chưa
-        var stored_pwd = localStorage.getItem("nch_admin_password_storage");
-        var current_url = new URL(window.parent.location.href);
-        
-        // 2. Nếu tìm thấy mật mã trong máy và URL chưa được nạp, tự chuyển hướng nạp ngầm vào Streamlit
-        if (stored_pwd && !current_url.searchParams.has("get_pwd")) {{
-            current_url.searchParams.set("get_pwd", stored_pwd);
-            window.parent.location.href = current_url.href;
-        }}
-    </script>
-""", height=0, width=0)
-
-st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
-
-# Lấy mật mã đã lưu làm giá trị mặc định cho ô nhập liệu
-default_pwd_value = st.session_state["saved_admin_password"]
-
-mat_ma_nhap = st.sidebar.text_input(
-    "Mật mã định danh Admin (Nếu có):", 
-    value=default_pwd_value, 
-    type="password", 
-    key="admin_password_permanent_key"
-)
-
-# Nếu thầy gõ mật mã mới, lập tức ra lệnh cho JavaScript lưu chặt vào ổ cứng trình duyệt vĩnh viễn
-if mat_ma_nhap:
-    components.html(f"""
-        <script>
-            localStorage.setItem("nch_admin_password_storage", "{mat_ma_nhap}");
-        </script>
-    """, height=0, width=0)
-
-# Kiểm tra điều kiện gán đặc quyền Admin dựa trên mật mã nạp tự động
-if mat_ma_nhap == MAT_MA_ADMIN_CỐ_ĐỊNH:
-    is_admin_owner = True
-    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-    st.sidebar.caption("Tự động kích hoạt quyền đặc quyền chạy trực tiếp bằng Key hệ thống.")
-    st.session_state["gv_api_key_input"] = ""
-else:
-    is_admin_owner = False
-    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
-    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
-    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
-    if st.session_state["gv_api_key_input"]:
-        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
-
-st.sidebar.markdown("---")
-
-# --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA) ---
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     st.sidebar.markdown("### 🛠️ CHỨC NĂNG GIÁO VIÊN")
     menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB","6. Thiết kế bài dạy STEM","7. Kế hoạch công tác chủ nhiệm lớp"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
@@ -188,6 +137,46 @@ else:  # Phân hệ Quản lý tổ chuyên môn
         else:
             st.subheader("📋 Danh sách phân công hiện tại:")
             st.dataframe(df_tv, use_container_width=True)
+
+st.sidebar.markdown("---")
+
+# ==================================================================================
+# --- 🚀 KHỐI HIỂN THỊ TRẠNG THÁI TÀI KHOẢN (VỊ TRÍ 3 - ĐẨY XUỐNG DƯỚI MENU TÁC NGHIỆP) ---
+# ==================================================================================
+st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
+
+# Thuật toán đọc mã PIN kích hoạt nhanh từ tham số đường dẫn URL bí mật (?admin=123456)
+url_params = st.query_params
+url_pwd = url_params.get("admin", "")
+
+if url_pwd == MAT_MA_ADMIN_CỐ_ĐỊNH:
+    st.session_state["current_entered_password"] = MAT_MA_ADMIN_CỐ_ĐỊNH
+
+# Ô nhập mật mã trên giao diện
+mat_ma_nhap = st.sidebar.text_input(
+    "Mật mã định danh Admin (Nếu có):", 
+    value=st.session_state["current_entered_password"], 
+    type="password", 
+    key="admin_password_input_field_v2"
+)
+
+# Đồng bộ giá trị gõ vào bộ nhớ tạm
+if mat_ma_nhap:
+    st.session_state["current_entered_password"] = mat_ma_nhap
+
+# Kết luận quyền hiển thị giao diện xanh/vàng
+if st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH:
+    is_admin_owner = True
+    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
+    st.sidebar.caption("Tự động kích hoạt đặc quyền chạy trực tiếp bằng Key hệ thống.")
+    st.session_state["gv_api_key_input"] = ""
+else:
+    is_admin_owner = False
+    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
+    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
+    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
+    if st.session_state["gv_api_key_input"]:
+        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
 
 # --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ (XUYÊN SUỐT DƯỚI CHÂN TRANG SIDEBAR) ---
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
