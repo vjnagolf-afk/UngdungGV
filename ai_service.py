@@ -1,12 +1,29 @@
-# ai_service.py - Bổ sung xử lý lỗi bận hệ thống 503 và 429
+# ai_service.py - Bản vá phòng vệ triệt tiêu lỗi KeyError trích xuất API Key từ Secrets
 import streamlit as st
 from google import genai
 from google.genai import errors
 
 def get_system_api_key():
-    return st.secrets.get("GEMINI_API_KEY", "")
+    """Lấy API Key tổng dự phòng của hệ thống an toàn, chống lỗi KeyError"""
+    try:
+        # Kiểm tra sự tồn tại của khóa trước khi trích xuất giá trị để tránh vấp KeyError
+        if "GEMINI_API_KEY" in st.secrets:
+            return st.secrets["GEMINI_API_KEY"]
+        
+        # Quét tìm các tên khóa dự phòng khác nếu có trong secrets
+        for key in st.secrets.keys():
+            if "GEMINI" in key.upper() or "API_KEY" in key.upper():
+                return st.secrets[key]
+    except Exception:
+        pass
+    return ""
 
 def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=True):
+    """
+    Trung tâm điều phối gọi API phân luồng bảo mật.
+    - Nếu là máy của Admin (nhập đúng mật mã): Chạy bằng Key hệ thống.
+    - Nếu là máy giáo viên khác: Ép dùng Key cá nhân dán ở Sidebar giao diện.
+    """
     if is_admin_owner:
         api_key_to_use = get_system_api_key()
         nguon_key = "Tài khoản hệ thống (Chính chủ)"
@@ -19,10 +36,9 @@ def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=
             return "⚠️ Bạn đang truy cập từ thiết bị thành viên. Vui lòng nhập API Key Gemini cá nhân của bạn ở mục '🔑 TRẠNG THÁI TÀI KHOẢN' tại thanh bên trái để kích hoạt quyền ra đề/soạn bài!", "error"
             
     if not api_key_to_use:
-        return "⚠️ Hệ thống chưa được cấu hình API Key. Vui lòng liên hệ Admin hoặc tự cung cấp mã Key cá nhân!", "error"
+        return "⚠️ Hệ thống chưa được cấu hình API Key. Vui lòng liên hệ Admin hoặc tự cung cấp mã Key cá nhân ở mục Trạng thái tài khoản để sử dụng!", "error"
     
-    # 🌟 THIẾT LẬP LUỒNG DỰ PHÒNG TOÀN DIỆN CHO TẤT CẢ CÁC PHÂN HỆ
-    # Gộp gemini-1.5-pro làm máy gác cổng cuối cùng cho mọi lựa chọn
+    # Định biên danh mục mã Model ID thương mại chính thức của Google
     model_pool = {
         "3.1 Flash-Lite": ["gemini-2.5-flash", "gemini-1.5-pro"],
         "3.5 Flash": ["gemini-2.5-flash", "gemini-1.5-pro"],
@@ -53,16 +69,13 @@ def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=
                 
         except errors.APIError as error:  
             last_error_message = f"Mô hình {model_name} báo lỗi API: {str(error)}"
-            
-            # 🌟 THUẬT TOÁN BẮT BÀI LỖI 503 (QUÁ TẢI) HOẶC 429 (HẾT HẠN MỨC) ĐỂ TỰ ĐỘNG CHUYỂN DÒNG MÁY
-            if "503" in str(error) or "UNAVAILABLE" in str(error):
-                st.toast(f"⏳ {model_name} đang bận cục bộ. Hệ thống tự động lùi sang dòng máy dự phòng...", icon="🔄")
-            elif "429" in str(error):
-                st.toast(f"⏳ {model_name} đạt giới hạn hạn mức câu hỏi của ngày. Hệ thống đang lùi dòng máy...", icon="⚠️")
+            if "429" in str(error):
+                st.toast("⏳ Mô hình đạt giới hạn hạn mức câu hỏi của ngày. Hệ thống đang lùi dòng máy...", icon="⚠️")
+            elif "503" in str(error):
+                st.toast("⏳ Máy chủ Google đang bận cục bộ. Hệ thống tự động chuyển dòng máy dự phòng...", icon="🔄")
             continue  
-            
         except Exception as e:
             last_error_message = f"Sự cố đường truyền: {str(e)}"
             continue
             
-    return f"Lỗi hệ thống: Tất cả các dòng máy dự phòng cấu hình đều không phản hồi thành công. Ghi nhận lỗi cuối cùng: {last_error_message}", "error"
+    return f"❌ Lỗi: Không thể phản hồi từ AI. Ghi nhận lỗi cuối cùng: {last_error_message}", "error"
