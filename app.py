@@ -124,7 +124,7 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     elif menu == "7. Kế hoạch công tác chủ nhiệm lớp":
         render_chu_nhiem_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif st.session_state["menu_gv_selectbox_v9"] == "8. Kế hoạch hỗ trợ học sinh khuyết tật":
-        render_special_ed_section(run_ai_prompt_safe_func)
+        render_special_ed_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
 else:  # Phân hệ Quản lý tổ chuyên môn
     st.sidebar.markdown("### 📂 QUẢN LÝ TỔ CHUYÊN MÔN")
     menu = st.sidebar.selectbox("Nội dung quản lý", ["1. Quản lý & Phân công chuyên môn", "2. Biên bản sinh hoạt", "3. Kế hoạch cá nhân", "4. Thống kê số liệu"], label_visibility="collapsed", key="menu_ql_selectbox_v9")
