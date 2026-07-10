@@ -186,104 +186,66 @@ def export_khbd_to_docx(markdown_content, images_list):
     doc.save(buf)
     return buf.getvalue()
 
+# (Giữ nguyên các phần import và hàm get_khbd_sheet, extract_context_from_uploaded_files, set_paragraph_spacing, export_khbd_to_docx như bản trước)
+
 def render_khbd_section(run_ai_prompt_safe_func):
-    st.markdown("<h3 style='text-align: center; color: blue;'>🧠 TRỢ LÝ THIẾT KẾ KẾ HOẠCH BÀI DẠY (KHBD) AI PHÁT TRIỂN NĂNG LỰC</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: blue;'>🧠 TRỢ LÝ THIẾT KẾ KẾ HOẠCH BÀI DẠY (KHBD) AI</h3>", unsafe_allow_html=True)
+    
+    # Khởi tạo trạng thái
+    if "ket_qua_khbd" not in st.session_state: st.session_state["ket_qua_khbd"] = ""
     
     tab_thiet_ke, tab_thu_vien = st.tabs(["📝 THIẾT KẾ KHBD TỰ ĐỘNG", "🗄️ THƯ VIỆN BÀI SOẠN"])
     
-    if "ket_qua_khbd" not in st.session_state: st.session_state["ket_qua_khbd"] = ""
-    if "lich_su_khbd" not in st.session_state: st.session_state["lich_su_khbd"] = []
-    if "images_khbd" not in st.session_state: st.session_state["images_khbd"] = []
-
     with tab_thiet_ke:
-        st.write("Nhập thông tin bài học và tải lên tài liệu tham khảo để AI lập tiến trình dạy học Công văn 5512.")
-        
         ten_bai = st.text_input("Tên bài học / Chủ đề bài dạy:", placeholder="Ví dụ: Bài 4: Tốc độ chuyển động - Khoa học tự nhiên 7")
         
-        col_lop, col_bo = st.columns(2)
-        with col_lop:
-            lop_khbd = st.text_input("Lớp dạy:", value="Lớp 7")
-        with col_bo:
-            bo_sach = st.selectbox("Bộ sách giáo khoa:", ["Kết nối tri thức với cuộc sống", "Cánh Diều", "Chân trời sáng tạo", "Chương trình GDPT 2018"])
-
-        col_tg, col_loai = st.columns(2)
-        with col_tg:
-            thoi_luong = st.text_input("Thời lượng bài dạy (Tiết):", value="2 tiết")
-        with col_loai:
-            kieu_khbd = st.selectbox("Mẫu cấu trúc thiết kế:", ["Chuẩn Công văn 5512 (Đầy đủ 4 hoạt động)", "Rút gọn (Tiết kiệm thời gian)", "Giáo án hoạt động trải nghiệm/STEM"])
-
-        st.markdown("**Tải lên tài liệu tham khảo thô (Đề cương, Sách, file nội dung bài học nếu có):**")
-        files_tailieu = st.file_uploader("Chọn tệp (.docx, .pdf, .txt):", type=["docx", "pdf", "txt"], accept_multiple_files=True, key="khbd_files_upload")
-
-        context_data = ""
-        if files_tailieu:
-            context_data, st.session_state["images_khbd"] = extract_context_from_uploaded_files(files_tailieu)
-            st.success(f"📊 Đã nạp thành công văn bản tham khảo và trích xuất được {len(st.session_state['images_khbd'])} hình ảnh!")
-
-        col_chk1, col_chk2 = st.columns(2)
-        with col_chk1:
-            chk_ai_digital = st.checkbox("Tích hợp năng lực số và AI", value=True)
-        with col_chk2:
-            chk_strict_file = st.checkbox("Bám sát 100% file tài liệu tải lên", value=False)
-
-        yeu_cau_rieng = st.text_area("Yêu cầu sư phạm bổ sung (Tùy chọn):", placeholder="Ví dụ: Thiết kế thêm một trò chơi khởi động sôi nổi...")
-
-        col_btn1, col_blank, col_btn2 = st.columns([2.2, 1.0, 1.8])
+        col1, col2 = st.columns([1, 1])
+        with col1:
+            if st.button("⚡ Thiết kế bài dạy bằng AI", type="primary", use_container_width=True):
+                if ten_bai:
+                    with st.spinner("Đang soạn giáo án..."):
+                        ket_qua, _ = run_ai_prompt_safe_func(f"Soạn KHBD chuẩn 5512 bài: {ten_bai}")
+                        st.session_state["ket_qua_khbd"] = ket_qua
+                else:
+                    st.warning("⚠️ Vui lòng điền tên bài học!")
         
-        with col_btn2:
-            st.write(""); st.write("")
-            nut_tao_khbd = st.button("⚡ Tiến hành thiết kế bài dạy bằng AI", type="primary", use_container_width=True)
-
-        if nut_tao_khbd:
-            if not ten_bai:
-                st.warning("⚠️ Vui lòng điền tên bài học hoặc chủ đề giảng dạy!")
-            else:
-                with st.spinner("🧠 AI đang phân tích dữ liệu, bám sát Công văn 5512 để thiết kế tiến trình..."):
-                    prompt_requirements = ""
-                    if chk_ai_digital:
-                        prompt_requirements += "\n- TẠI MỤC I.2 (VỀ NĂNG LỰC): Bổ sung tiểu mục 'c) Năng lực số và AI'."
-                    if chk_strict_file:
-                        prompt_requirements += f"\n- QUY ĐỊNH BẮT BUỘC: Bám sát 100% tệp tài liệu: {context_data[:3000]}"
-
-                    prompt_khbd = f"""
-                    Bạn là Chuyên gia Phương pháp dạy học. Hãy soạn Kế hoạch bài dạy chi tiết:
-                    - Tên bài: {ten_bai}
-                    - Lớp: {lop_khbd} - Bộ sách: {bo_sach}
-                    - Thời lượng: {thoi_luong}
-                    - Yêu cầu: {prompt_requirements}
-                    - Bổ sung: {yeu_cau_rieng if yeu_cau_rieng else 'Không có'}
-                    - CÔNG THỨC TOÁN HỌC: Đặt tất cả công thức/đại lượng trong $...$, $$...$$, \(...\) hoặc \[...\].
-                    """
-                    ket_qua, _ = run_ai_prompt_safe_func(prompt_khbd)
-                    st.session_state["ket_qua_khbd"] = ket_qua
-
+        with col2:
+            # NÚT LƯU TẠM THỜI
+            if st.button("💾 Lưu tạm thời vào Google Sheets", use_container_width=True):
+                if st.session_state["ket_qua_khbd"]:
+                    if save_khbd_to_sheet(ten_bai or "Bài không tên", "Lớp 7", "Kết nối tri thức", "2 tiết", st.session_state["ket_qua_khbd"]):
+                        st.success("✅ Đã lưu vào Sheet!")
+                    else:
+                        st.error("❌ Không thể lưu vào Sheet.")
+                else:
+                    st.warning("⚠️ Chưa có bài để lưu!")
+        
         if st.session_state["ket_qua_khbd"]:
-            st.markdown("### 📋 Giáo án bài dạy xem trước:")
+            st.markdown("### 📋 Kết quả xem trước:")
             st.markdown(st.session_state["ket_qua_khbd"])
-
-        with col_btn1:
-            st.write(""); st.write("")
-            title_file_khbd = f"KHBD_{lop_khbd}_{ten_bai[:20].replace(' ', '_')}" if ten_bai else "Ke_Hoach_Bai_Day"
             
-            if st.session_state["ket_qua_khbd"]:
-                docx_data_khbd = export_khbd_to_docx(st.session_state["ket_qua_khbd"], st.session_state["images_khbd"])
-                is_disabled_khbd = False
-                sheet_khbd = get_khbd_sheet()
-                if sheet_khbd is not None:
-                    try: sheet_khbd.append_row([ten_bai, lop_khbd, bo_sach, thoi_luong, datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
-                    except: pass
-            else:
-                docx_data_khbd = b""
-                is_disabled_khbd = True
-
-            st.download_button(
-                label="📥 Tải tệp Giáo án Word (.docx)",
-                data=docx_data_khbd,
-                file_name=f"{title_file_khbd}.docx",
-                mime="application/vnd.openxmlformats-officedocument.wordprocessingml.document",
-                disabled=is_disabled_khbd,
-                use_container_width=True
-            )
+            # Nút tải file
+            docx_data = export_khbd_to_docx(st.session_state["ket_qua_khbd"], [])
+            st.download_button("📥 Tải tệp Word (.docx)", data=docx_data, file_name="KHBD.docx", use_container_width=True)
 
     with tab_thu_vien:
-        st.markdown(f"🔗 [Mở Google Sheets quản lý bài soạn](https://docs.google.com/spreadsheets/d/{SHEET_ID}/edit)")
+        st.write("### 📂 Danh sách bài soạn đã lưu trên Google Sheets")
+        ds_bai = get_all_khbd_from_sheet()
+        
+        if not ds_bai:
+            st.info("Chưa có bài soạn nào được lưu.")
+        else:
+            for idx, bai in enumerate(ds_bai):
+                with st.expander(f"📖 {bai.get('Tên bài', 'Bài soạn')} ({bai.get('Thời gian', 'N/A')})"):
+                    col_a, col_b = st.columns(2)
+                    # NÚT GỌI BÀI
+                    if col_a.button("📥 Gọi lại bài soạn", key=f"load_{idx}", use_container_width=True):
+                        st.session_state["ket_qua_khbd"] = bai['Nội dung chi tiết']
+                        st.rerun()
+                    # NÚT XÓA BÀI
+                    if col_b.button("🗑️ Xóa bài soạn", key=f"del_{idx}", use_container_width=True):
+                        if delete_khbd_from_sheet(idx):
+                            st.success("✅ Đã xóa!")
+                            st.rerun()
+                        else:
+                            st.error("❌ Xóa lỗi.")
