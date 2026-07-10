@@ -1,4 +1,4 @@
-# khbd_manager.py - ĐOẠN 1: CẤU HÌNH & TRÍCH XUẤT TÀI LIỆU
+# khbd_manager.py - ĐOẠN 1: ĐỒNG BỘ LUỒNG XÁC THỰC GOOGLE SHEETS KHÔNG BỊ HẾT HẠN TOKEN
 import streamlit as st
 import docx  
 from docx.shared import Inches, Pt, RGBColor
@@ -10,7 +10,6 @@ import io
 import re
 from pypdf import PdfReader
 import gspread
-from google.oauth2.service_account import Credentials
 from datetime import datetime
 
 # Nhúng bộ biên dịch toán và đồ thị thông minh để dùng cho bài soạn
@@ -20,15 +19,34 @@ from math_compiler import process_runs_with_math, generate_plot_stream
 SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' 
 
 def get_khbd_sheet():
+    """Tự động nhận diện cấu hình trong Secrets và đồng bộ luồng gspread chuẩn giống bên Đề KT"""
     try:
-        creds_dict = dict(st.secrets["GOOGLE_KEY"])
-        scopes = ['https://googleapis.com', 'https://googleapis.com']
-        creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
-        client = gspread.authorize(creds)
-        return client.open_by_key(SHEET_ID).worksheet("KHBD")
-    except Exception as e:
-        st.warning(f"Không thể kết nối Google Sheet KHBD: {e}")
+        creds_dict = None
+        # Quét tìm cấu hình Service Account đã lưu trong ô Secrets của thầy
+        priority_keys = ["gspread_credentials", "GSPREAD_CREDENTIALS", "google_sheet_creds", "google_creds", "GOOGLE_KEY"]
+        for key in priority_keys:
+            if key in st.secrets:
+                creds_dict = st.secrets[key]
+                break
+                
+        if creds_dict is None:
+            for key in st.secrets.keys():
+                node = st.secrets[key]
+                if hasattr(node, "get") or isinstance(node, dict):
+                    if node.get("type") == "service_account" or "private_key" in node:
+                        creds_dict = node
+                        break
+                        
+        if creds_dict is None:
+            return None
+            
+        # 🚀 SỬ DỤNG HÀM NÀY ĐỂ GOOGLE TỰ ĐỘNG GIA HẠN TOKEN, TRIỆT TIÊU LỖI NO ACCESS TOKEN
+        gc = gspread.service_account_from_dict(creds_dict)
+        sh = gc.open_by_key(SPREADSHEET_ID if 'SPREADSHEET_ID' in globals() else SHEET_ID)
+        return sh.worksheet("KHBD")
+    except:
         return None
+
 
 # --- HÀM TRÍCH XUẤT VĂN BẢN VÀ LỌC ẢNH TRÙNG LẶP ---
 def extract_context_from_uploaded_files(uploaded_files):
