@@ -1,4 +1,4 @@
-# app.py - Khớp cấu trúc GitHub 2026, vá lỗi lệch tham số KHBD & hạ trạng thái tài khoản
+# app.py - Tích hợp bộ mật mã xác thực Admin vĩnh viễn chống lỗi F5
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -10,14 +10,14 @@ current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-from database_manager import check_if_admin_device, inject_demo_data, DB_PATH
+from database_manager import inject_demo_data, DB_PATH
 from ai_service import run_ai_prompt_safe
 
-# 🚀 ĐỒNG BỘ ĐÚNG TÊN FILE VÀ HÀM THEO CẤU TRÚC THƯ MỤC GITHUB CỦA THẦY/CÔ
+# Nhúng các phân hệ tác nghiệp vệ tinh của thầy/cô
 from exam_designer import render_exam_designer_section 
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
-from khbd_manager import render_khbd_section  # Chính xác file khbd_manager.py
+from khbd_manager import render_khbd_section  
 from danh_gia_manager import render_assessment_section
 
 from org_manager import render_org_section
@@ -26,14 +26,26 @@ from ke_hoach_ca_nhan_manager import render_personal_plan
 from stem_manager import render_stem_section
 from chu_nhiem_manager import render_chu_nhiem_section 
 
-# Khởi chạy quét thiết bị nhận diện Admin ngay khi nạp trang
-is_admin_owner = check_if_admin_device()
-
-# Khởi tạo bộ nhớ tạm đồng bộ session
-if "db_thanh_vien" not in st.session_state: st.session_state["db_thanh_vien"] = []
-if "db_phan_cong_hien_tai" not in st.session_state: st.session_state["db_phan_cong_hien_tai"] = []
-
 st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
+
+# 🚀 BỘ VÁ CSS: Khử padding/margin thừa giữa các phần tử trong Sidebar
+st.markdown("""
+    <style>
+        [data-testid="stSidebarUserContent"] {
+            padding-top: 1.5rem !important;
+            padding-bottom: 1.5rem !important;
+        }
+        [data-testid="stSidebarUserContent"] .stMarkdown, 
+        [data-testid="stSidebarUserContent"] .stRadio, 
+        [data-testid="stSidebarUserContent"] .stSelectbox {
+            margin-bottom: -0.4rem !important;
+        }
+        [data-testid="stSidebarUserContent"] hr {
+            margin-top: 0.6rem !important;
+            margin-bottom: 0.6rem !important;
+        }
+    </style>
+""", unsafe_allow_html=True)
 
 # Tiêu đề giao diện chính
 st.markdown("<h1 style='text-align: center; color: darkred; font-weight: bold;'>🔰 HỆ SINH THÁI SỐ - HỖ TRỢ GIÁO VIÊN</h1>", unsafe_allow_html=True)
@@ -55,13 +67,39 @@ phan_he = st.sidebar.radio(
 
 st.sidebar.markdown("---")
 
+# ==================================================================================
+# --- KHỐI HIỂN THỊ Ô XÁC THỰC ADMIN / NHẬP KEY (VỊ TRÍ 3 - ĐÃ ĐẨY XUỐNG DƯỚI CÙNG SIDEBAR) ---
+# ==================================================================================
+# 🌟 Đặt khối logic check mật mã ẩn lên trên đầu luồng để gán đặc quyền cho Menu
+# Thầy cô tự đặt mật mã bảo mật của mình tại đây (Ví dụ: "123456")
+MAT_MA_ADMIN_CỐ_ĐỊNH = "123456"
+
+# Tạo hộp nhập mật mã ẩn ở chân trang Sidebar, tận dụng tính năng tự động ghi nhớ form của trình duyệt Chrome/Cốc Cốc
+st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
+mat_ma_nhap = st.sidebar.text_input("Mật mã định danh Admin (Nếu có):", type="password", key="admin_password_permanent_key")
+
+# Kiểm tra điều kiện gán đặc quyền Admin
+if mat_ma_nhap == MAT_MA_ADMIN_CỐ_ĐỊNH:
+    is_admin_owner = True
+    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
+    st.sidebar.caption("Tự động kích hoạt quyền đặc quyền chạy trực tiếp bằng Key hệ thống.")
+    st.session_state["gv_api_key_input"] = ""
+else:
+    is_admin_owner = False
+    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
+    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
+    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
+    if st.session_state["gv_api_key_input"]:
+        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
+
+st.sidebar.markdown("---")
+
 # --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA) ---
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     st.sidebar.markdown("### 🛠️ CHỨC NĂNG GIÁO VIÊN")
     menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB","6. Thiết kế bài dạy STEM","7. Kế hoạch công tác chủ nhiệm lớp"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
     
     if menu == "1. Thiết kế KHBD": 
-        # 🚀 VÁ LỖI CỐT LÕI: Đồng bộ đúng 1 tham số trùng khớp với hàm trong khbd_manager.py
         render_khbd_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "2. Thiết kế Đề KT": 
         render_exam_designer_section(lambda p, m: run_ai_prompt_safe(p, m, is_admin_owner))
@@ -114,26 +152,7 @@ else:  # Phân hệ Quản lý tổ chuyên môn
             st.subheader("📋 Danh sách phân công hiện tại:")
             st.dataframe(df_tv, use_container_width=True)
 
-# ==================================================================================
-# --- KHỐI HIỂN THỊ Ô NHẬP KEY THEO THIẾT BỊ ĐỐI TƯỢNG (VỊ TRÍ 3 - DƯỚI CÙNG SIDEBAR) ---
-# ==================================================================================
-st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
-
-if is_admin_owner:
-    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-    st.sidebar.caption("Tự động kích hoạt quyền đặc quyền chạy trực tiếp bằng Key hệ thống.")
-    st.session_state["gv_api_key_input"] = ""
-else:
-    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
-    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
-    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
-    if st.session_state["gv_api_key_input"]:
-        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
-
-# ==================================================================================
 # --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ (XUYÊN SUỐT DƯỚI CHÂN TRANG SIDEBAR) ---
-# ==================================================================================
 st.sidebar.markdown("<br>", unsafe_allow_html=True)
 st.sidebar.markdown("""
     <div style='text-align: center; border-top: 1px solid #ddd; padding-top: 12px; margin-top: 5px;'>
