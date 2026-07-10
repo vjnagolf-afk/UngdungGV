@@ -1,12 +1,10 @@
-# math_compiler.py - Bản vá dứt điểm 100% lỗi NameError Pt
+# math_compiler.py - Vá lỗi bóc tách Regex dấu đô-la đan xen văn bản thường
 import io
 import re
 import numpy as np
 import matplotlib.pyplot as plt
 from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
-
-# 🚀 IMPORT ĐẦY ĐỦ ĐỂ TRÁNH LỖI NAMEERROR
 from docx.shared import Pt
 
 def generate_plot_stream(eq_str):
@@ -50,7 +48,7 @@ def convert_latex_to_omml(latex_str):
     latex_str = latex_str.strip()
     latex_str = latex_str.replace(r'\pi', 'π').replace(r'\infty', '∞')
     latex_str = latex_str.replace(r'\times', '×').replace(r'\cdot', '·')
-    latex_str = latex_str.replace(r'\approx', '≈')
+    latex_str = latex_str.replace(r'\approx', '≈').replace(r'\text', '')
     
     latex_str = re.sub(r'\(\((.*?)\)/\((.*?)\)\)', r'(\1)/(\2)', latex_str)
     latex_str = re.sub(r'\((.*?)\)/\((.*?)\)', r'(\1)/(\2)', latex_str)
@@ -85,18 +83,10 @@ def convert_latex_to_omml(latex_str):
         return None
 
 def process_runs_with_math(paragraph, text):
+    """Phân tách chuỗi đan xen đô-la cực kỳ nghiêm ngặt"""
     text_clean = text.strip()
     
-    match_choice = re.match(r'^([A-D]\.\s*)(.*)', text_clean)
-    if match_choice:
-        prefix = match_choice.group(1)
-        remain_text = match_choice.group(2)
-        run_prefix = paragraph.add_run(prefix)
-        run_prefix.bold = True
-        run_prefix.font.name = 'Times New Roman'
-        run_prefix.font.size = Pt(14)
-        text_clean = remain_text
-
+    # Sửa Regex: Quét trọn vẹn dấu đô-la đan xen văn bản
     parts = re.split(r'(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)', text_clean)
     for part in parts:
         if not part:
