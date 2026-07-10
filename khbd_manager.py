@@ -115,23 +115,30 @@ def export_khbd_to_docx(markdown_content, images_list):
             if row_data: table_rows.append(row_data)
             continue
         else:
-            # Nếu hết bảng, render bảng với số cột chuẩn hóa
             if table_rows:
-                # [BẢN VÁ]: Xác định số cột lớn nhất để tránh lỗi IndexError
                 max_cols = max(len(row) for row in table_rows)
-                
-                # Tạo bảng an toàn
                 tbl = doc.add_table(rows=len(table_rows), cols=max_cols)
                 tbl.style = 'Table Grid'
                 
                 for i, row in enumerate(table_rows):
                     for j in range(max_cols):
-                        # Nếu dòng hiện tại thiếu cột so với max_cols, điền chuỗi rỗng
                         val = row[j] if j < len(row) else ""
-                        tbl.cell(i, j).text = val
+                        # [BẢN VÁ]: KHÔNG DÙNG cell.text, SỬ DỤNG PARAGRAPH ĐỂ RENDER TOÁN
+                        cell = tbl.cell(i, j)
+                        # Xóa paragraph mặc định của cell
+                        for p in cell.paragraphs:
+                            p = p._element
+                            p.getparent().remove(p)
+                        # Thêm paragraph mới và dùng trình biên dịch toán
+                        p_cell = cell.add_paragraph()
+                        process_runs_with_math(p_cell, val)
+                        # Định dạng font cho ô bảng
+                        for r in p_cell.runs:
+                            r.font.name = 'Times New Roman'
+                            r.font.size = Pt(12)
                 
                 table_rows = []
-                doc.add_paragraph() # Khoảng cách sau bảng
+                doc.add_paragraph()
 
         # XỬ LÝ ĐỀ MỤC VÀ ĐỊNH DẠNG (KHÓA CỨNG)
         p = doc.add_paragraph()
