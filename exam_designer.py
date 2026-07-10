@@ -39,14 +39,14 @@ def sync_exam_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
         return True
     except:
         return False
-# exam_designer.py - ĐOẠN 2: KHỞI TẠO STATE & KHUNG HÀNG 1, HÀNG 2
+# exam_designer.py - ĐOẠN 2: KHỞI TẠO STATE & KHUNG HÀNG 1, HÀNG 2 (CẬP NHẬT 2 NÚT TẢI)
 def render_exam_designer_section(run_ai_prompt_safe_func):
-    """Giao diện phân hệ thiết kế đề kiểm tra - Đã tích hợp lưu trữ và sửa lỗi ẩn biến"""
+    """Giao diện phân hệ thiết kế đề kiểm tra - Tách biệt nút tải Đề cương và Ma trận"""
     
     if "ket_qua_de" not in st.session_state: st.session_state["ket_qua_de"] = ""
     if "model_dung" not in st.session_state: st.session_state["model_dung"] = ""
     
-    # Lưu thông tin cấu hình vào session_state để tránh lỗi NameError khi tải trang lại
+    # Lưu thông tin cấu hình vào session_state để tránh lỗi NameError
     if "save_ten_de" not in st.session_state: st.session_state["save_ten_de"] = "Đề kiểm tra giữa học kỳ I"
     if "save_school" not in st.session_state: st.session_state["save_school"] = "TRƯỜNG THCS NGUYỄN CHÍ THANH"
     if "save_mon_hoc" not in st.session_state: st.session_state["save_mon_hoc"] = "Khoa học tự nhiên"
@@ -67,18 +67,31 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
             st.session_state["save_school"] = st.text_input("Tên trường hành chính:", value=st.session_state["save_school"])
             
         with col_tài_liệu:
-            st.markdown("**TẢI MA TRẬN / ĐẶC TẢ MẪU (Bắt buộc để AI bám sát cấu trúc):**")
-            file_mau = st.file_uploader("Upload File Ma Trận (.pdf, .docx):", type=["docx", "pdf"], key="exam_upload_matrix_2026")
+            # 🚀 NÚT TẢI 1: ĐỀ CƯƠNG / TÀI LIỆU NỘI DUNG KIẾN THỨC
+            st.markdown("**1. TẢI TÀI LIỆU / ĐỀ CƯƠNG KIẾN THỨC YÊU CẦU BÁM SÁT RA ĐỀ:**")
+            file_de_cuong = st.file_uploader("Upload Đề Cương (.docx, .pdf):", type=["docx", "pdf"], key="exam_upload_de_cuong_2026")
             
-            noi_dung_mau = ""
-            if file_mau:
-                if file_mau.name.endswith(".docx"):
-                    noi_dung_mau = read_uploaded_docx(file_mau)
+            noi_dung_de_cuong = ""
+            if file_de_cuong:
+                if file_de_cuong.name.endswith(".docx"):
+                    noi_dung_de_cuong = read_uploaded_docx(file_de_cuong)
                 else:
-                    noi_dung_mau = read_uploaded_pdf(file_mau)
-                st.success(f"✅ Đã nhận diện dữ liệu ma trận mẫu: {file_mau.name}")
-            else:
-                st.info("💡 Bạn có thể dán khung cấu trúc ma trận thủ công vào ô 'Nhập yêu cầu khác' ở phía dưới nếu không tải file.")
+                    noi_dung_de_cuong = read_uploaded_pdf(file_de_cuong)
+                st.success(f"✅ Đã nạp tài liệu đề cương: {file_de_cuong.name}")
+                
+            st.markdown("<div style='margin-top: 15px;'></div>", unsafe_allow_html=True)
+            
+            # 🚀 NÚT TẢI 2: KHUNG CẤU TRÚC MA TRẬN / ĐẶC TẢ ĐỀ THI
+            st.markdown("**2. TẢI KHUNG CẤU TRÚC MA TRẬN / ĐẶC TẢ CHI TIẾT:**")
+            file_ma_tran = st.file_uploader("Upload Khung Ma Trận (.docx, .pdf):", type=["docx", "pdf"], key="exam_upload_ma_tran_2026")
+            
+            noi_dung_ma_tran = ""
+            if file_ma_tran:
+                if file_ma_tran.name.endswith(".docx"):
+                    noi_dung_ma_tran = read_uploaded_docx(file_ma_tran)
+                else:
+                    noi_dung_ma_tran = read_uploaded_pdf(file_ma_tran)
+                st.success(f"✅ Đã nạp cấu trúc ma trận: {file_ma_tran.name}")
 
         st.markdown("---")
 
@@ -119,7 +132,7 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                 with cols_diem_tl[col_idx]:
                     diem_cau = st.number_input(f"Câu {i+1}:", min_value=0.0, max_value=10.0, value=2.0 if i < 3 else 1.0, step=0.5, key=f"tl_c_{i}")
                     diem_chi_tiet_tl.append((i+1, diem_cau))
-# exam_designer.py - ĐOẠN 3: TỶ LỆ NHẬN THỨC, LUỒNG AI, TẢI FILE & TAB THƯ MỤC
+# exam_designer.py - ĐOẠN 3: TỶ LỆ NHẬN THỨC, LUỒNG AI GỘP 2 NÚT TẢI, TẢI FILE & TAB THƯ MỤC
         st.markdown("---")
 
         # --- HÀNG MỨC ĐỘ NHẬN THỨC VÀ NÚT BẤM ---
@@ -144,27 +157,31 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
             st.write(""); st.write("")
             st.checkbox("Yêu cầu bám sát kiến thức trong GIÁO TRÌNH, tài liệu", value=True)
 
-        # XỬ LÝ LOGIC GỌI AI & ĐỒNG BỘ GOOGLE SHEETS
+        # XỬ LÝ LOGIC GỌI AI & ĐỒNG BỘ SONG SONG CẢ ĐỀ CƯƠNG LẪN MA TRẬN
         if nut_sinh_de:
             if int(tl_nhan_biet + tl_thong_hieu + tl_van_dung + tl_vd_cao) != 100:
                 st.error("⚠️ Tổng tỷ lệ mức độ nhận thức phải bằng 100%!")
             else:
-                with st.spinner("🧠 Hệ thống đang xử lý dữ liệu và thiết lập đề thi..."):
+                with st.spinner("🧠 Hệ thống đang phân tích tài liệu đề cương và ma trận cấu trúc để lập đề..."):
                     chuỗi_điểm_tl = ", ".join([f"Câu {c_id} ({d}đ)" for c_id, d in diem_chi_tiet_tl])
+                    
                     prompt_vi_mo = f"""
                     Bạn là Chuyên gia Khảo thí và Kiểm định Chất lượng Giáo dục phổ thông tại Việt Nam. Hãy sinh Đề thi cho môn {st.session_state['save_mon_hoc']} - {st.session_state['save_khoi_lop']} (Thời gian làm bài: {st.session_state['save_thoi_gian']}).
                     
-                    YÊU CẦU MA TRẬN CHI TIẾT TỪ FILE TẢI LÊN:
-                    {noi_dung_mau if 'noi_dung_mau' in locals() and noi_dung_mau else "Tự cấu trúc dựa trên chuẩn kiến thức kỹ năng hiện hành."}
+                    [DỮ LIỆU ĐỀ CƯƠNG YÊU CẦU BÁM SÁT KIẾN THỨC]:
+                    {noi_dung_de_cuong if noi_dung_de_cuong else "Dựa theo phạm vi phân phối kiến thức tiêu chuẩn của chương trình học hiện hành."}
                     
-                    QUY ĐỊNH CẤU TRÚC ĐỀ THI ĐÃ THIẾT LẬP:
+                    [DỮ LIỆU CẤU TRÚC MA TRẬN / ĐẶC TẢ YÊU CẦU PHÂN BỔ]:
+                    {noi_dung_ma_tran if noi_dung_ma_tran else "Tự phân bổ số câu Nhận biết/Thông hiểu theo tỷ lệ giao diện."}
+                    
+                    QUY ĐỊNH CẤU TRÚC ĐỀ THI ĐÃ THIẾT LẬP TRÊN GIAO DIỆN:
                     - Hình thức đề: {hinh_thuc}
                     - Phần Trắc nghiệm ({tong_diem_tn} điểm, {tong_cau_tn} câu): {sc_nhieu_lua_chon} câu nhiều lựa chọn, {sc_dung_sai} câu đúng sai.
                     - Phần Tự luận ({tong_diem_tl} điểm): Phân bổ câu {chuỗi_điểm_tl}
                     - Tỷ lệ nhận thức: Nhận biết {tl_nhan_biet}%, Thông hiểu {tl_thong_hieu}%, Vận dụng {tl_van_dung}%, Vận dụng cao {tl_vd_cao}%.
                     - Yêu cầu bổ sung: {yeu_cau_khac}
                     
-                    QUY ĐỊNH ĐỊNH DẠNG: Công thức toán đặt trong $...$, các đáp án trắc nghiệm A., B., C., D. bắt buộc phải tự động xuống dòng độc lập.
+                    QUY ĐỊNH ĐỊNH DẠNG: Công thức toán đặt trong $...$, các đáp án trắc nghiệm A., B., C., D. bắt buộc phải tự động xuống dòng độc lập trên một hàng mới.
                     """
                     ket_qua, model_thuc_te = run_ai_prompt_safe_func(prompt_vi_mo)
                     st.session_state["ket_qua_de"] = ket_qua
