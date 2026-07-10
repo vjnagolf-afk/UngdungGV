@@ -128,26 +128,78 @@ def export_rubric_to_docx(title_text, markdown_content):
     doc.save(bio)
     return bio.getvalue()
 
-def render_assessment_section(run_ai_prompt_safe_func):
+import streamlit as st
+# Đảm bảo đã cài đặt: pip install google-genai
+from google import genai
+from google.genai import types
+
+def call_gemini_with_fallback(prompt_text, preferred_model):
+    """
+    Hàm gọi API Gemini có cơ chế tự động chuyển đổi mô hình (Fallback)
+    """
+    # Khởi tạo client sử dụng API Key từ Streamlit secrets
+    try:
+        client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+    except Exception as e:
+        return f"❌ Lỗi cấu hình API Key: {str(e)}", None
+
+    # Định nghĩa danh sách thứ tự mô hình ưu tiên hạ cấp (Fallback)
+    # Tên mô hình chính thức cập nhật theo tài liệu Google GenAI
+    model_pool = {
+        "3.1 Pro": ["gemini-1.5-pro", "gemini-1.5-flash", "gemini-2.5-flash-8b"],
+        "3.5 Flash": ["gemini-1.5-flash", "gemini-2.5-flash-8b"],
+        "Flash Lite": ["gemini-2.5-flash-8b"]
+    }
+    
+    # Lấy danh sách chuỗi mô hình sẽ thử nghiệm dựa trên lựa chọn của người dùng
+    models_to_try = model_pool.get(preferred_model, ["gemini-1.5-flash"])
+    
+    last_error = ""
+    for model_name in models_to_try:
+        try:
+            # Thông báo trạng thái đang thử nghiệm mô hình nào
+            # (Hữu ích khi debug, có thể ẩn đi nếu muốn giao diện sạch hơn)
+            response = client.models.generate_content(
+                model=model_name,
+                contents=prompt_text,
+                config=types.GenerateContentConfig(
+                    temperature=0.3, # Thấp một chút để Rubric chuẩn xác, định lượng tốt
+                )
+            )
+            # Nếu thành công, trả về kết quả và tên mô hình đã chạy thành công
+            return response.text, model_name
+        except Exception as e:
+            last_error = str(e)
+            # Nếu lỗi, vòng lặp for sẽ tự động chuyển sang model_name tiếp theo trong danh sách
+            continue
+            
+    # Nếu thử toàn bộ danh sách vẫn lỗi thì trả về thông báo lỗi cuối cùng
+    return f"❌ Tất cả các mô hình đều gặp lỗi. Lỗi cuối cùng: {last_error}", None
+
+
+def render_assessment_section(): # Bỏ tham số run_ai_prompt_safe_func vì đã tích hợp trực tiếp bên trên
     st.markdown("<h3 style='text-align: center; color: red;'>🎯 TRỢ LÝ THIẾT KẾ RUBRIC ĐÁNH GIÁ HỌC SINH TỰ ĐỘNG</h3>", unsafe_allow_html=True)
     
     tab_thiet_ke, tab_thu_vien = st.tabs(["📝 THIẾT KẾ TIÊU CHÍ RUBRIC AI", "🗄️ LƯU TRỮ RUBRIC"])
     
     if "ket_qua_rubric" not in st.session_state: 
         st.session_state["ket_qua_rubric"] = ""
-    if "lich_su_rubric" not in st.session_state: 
-        st.session_state["lich_su_rubric"] = []
+    if "model_da_dung" not in st.session_state:
+        st.session_state["model_da_dung"] = ""
 
     with tab_thiet_ke:
         st.write("Nhập tên nội dung bài học hoặc chủ đề để hệ thống tự động thiết kế bảng tiêu chí đánh giá định lượng.")
         
         noi_dung = st.text_input("Tên nội dung kiến thức bài học / Chương / Chủ đề / Sản phẩm:", placeholder="Ví dụ: Mô hình xe phản lực - Chương Tốc độ chuyển động")
         
-        col_lop, col_loai = st.columns(2)
+        col_lop, col_loai, col_model = st.columns([1, 1.5, 1.5])
         with col_lop:
             lop = st.text_input("Lớp:", placeholder="Ví dụ: 7A")
         with col_loai:
             hinh_thuc = st.selectbox("Hình thức đánh giá:", ["Qua sản phẩm học tập", "Qua bài thuyết trình", "Qua hoạt động nhóm", "Đánh giá năng lực thực hành"])
+        with col_model:
+            # 🆕 THÊM HỘP CHỌN MÔ HÌNH ƯU TIÊN
+            mo_hinh_uu_tien = st.selectbox("Mô hình ưu tiên sử dụng:", ["3.1 Pro", "3.5 Flash", "Flash Lite"])
 
         col_btn1, col_blank, col_btn2 = st.columns([2.5, 1.0, 2.0])
         
@@ -175,11 +227,15 @@ def render_assessment_section(run_ai_prompt_safe_func):
                     3. BỎ TOÀN BỘ các ký tự dấu sao kép '**' ở đầu và cuối các từ hoặc tiêu đề cột để tránh lỗi font chữ đậm.
                     4. Danh sách liệt kê dùng dấu gạch ngang '-' ở đầu dòng.
                     """
-                    ket_qua, model = run_ai_prompt_safe_func(prompt_rubric)
+                    # 🆕 GỌI HÀM CÓ CHỨA CƠ CHẾ TỰ ĐỘNG CHUYỂN ĐỔI MÔ HÌNH
+                    ket_qua, model_thuc_te = call_gemini_with_fallback(prompt_rubric, mo_hinh_uu_tien)
                     st.session_state["ket_qua_rubric"] = ket_qua
+                    st.session_state["model_da_dung"] = model_thuc_te
 
-        # Hiển thị kết quả AI nếu có trước khi tải file
+        # Hiển thị kết quả AI và thông báo rõ mô hình nào đã phản hồi thành công
         if st.session_state["ket_qua_rubric"]:
+            if st.session_state["model_da_dung"]:
+                st.info(f"🤖 Đã tạo thành công bằng mô hình: `{st.session_state['model_da_dung']}`")
             st.markdown("### 📋 Kết quả Rubric từ AI:")
             st.markdown(st.session_state["ket_qua_rubric"])
 
@@ -187,8 +243,8 @@ def render_assessment_section(run_ai_prompt_safe_func):
             st.write(""); st.write("")
             title_file = f"Rubric_{lop}_{noi_dung[:20].replace(' ', '_')}" if noi_dung else "Rubric_Danh_Gia"
             
-            # Chỉ tạo docx khi session_state thực sự có dữ liệu
-            if st.session_state["ket_qua_rubric"]:
+            if st.session_state["ket_qua_rubric"] and "❌ Lỗi" not in st.session_state["ket_qua_rubric"]:
+                from danh_gia_manager import export_rubric_to_docx # Hoặc import từ file của bạn
                 docx_data = export_rubric_to_docx(f"BẢNG RUBRIC ĐÁNH GIÁ: {noi_dung}", st.session_state["ket_qua_rubric"])
                 is_disabled = False
             else:
@@ -203,3 +259,4 @@ def render_assessment_section(run_ai_prompt_safe_func):
                 disabled=is_disabled,
                 use_container_width=True
             )
+
