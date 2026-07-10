@@ -89,6 +89,7 @@ def set_paragraph_spacing(paragraph, before_pt=3.0, after_pt=4.5):
     spacing.set(qn('w:lineRule'), 'auto')
     p_pr.append(spacing)
 # khbd_manager.py - ĐOẠN 2: THUẬT TOÁN KẾT XUẤT GIÁO ÁN CHUẨN WORD (VÁ LỖI ĐỀ MỤC & TOÁN HỌC)
+# khbd_manager.py - ĐOẠN 2: THUẬT TOÁN KẾT XUẤT GIÁO ÁN CHUẨN ĐỊNH DẠNG MÀU SẮC YÊU CẦU
 def export_khbd_to_docx(markdown_content, images_list):
     # 🚀 1. LÀM SẠCH VĂN BẢN TRƯỚC KHI XỬ LÝ DÒNG
     markdown_content = re.sub(r'(?m)^#+\s*', '', markdown_content) # Xóa dấu # Markdown
@@ -102,6 +103,7 @@ def export_khbd_to_docx(markdown_content, images_list):
 
     MAU_DO = RGBColor(255, 0, 0)
     MAU_XANH_DUONG = RGBColor(0, 51, 153)
+    MAU_DEN = RGBColor(0, 0, 0)
 
     style = doc.styles['Normal']
     style.font.name = 'Times New Roman'
@@ -112,7 +114,7 @@ def export_khbd_to_docx(markdown_content, images_list):
     table_data = []
     used_img_idx = 0
     
-    # Biến cờ đánh dấu để bỏ qua các dòng lời dẫn mở đầu của AI
+    # Biến cờ đánh dấu để cắt bỏ triệt để các dòng lời dẫn mở đầu của AI
     passed_intro = False
 
     for line in lines:
@@ -120,28 +122,33 @@ def export_khbd_to_docx(markdown_content, images_list):
         if not cleaned_line: 
             continue
 
-        # 🚀 2. THUẬT TOÁN LOẠI BỎ CÁC DÒNG LỜI DẪN MỞ ĐẦU CỦA AI
+        # 🚀 2. THUẬT TOÁN LOẠI BỎ TUYỆT ĐỐI CÁC DÒNG LỜI DẪN MỞ ĐẦU CỦA AI
         if not passed_intro:
-            # Nếu dòng không chứa các từ khóa giáo án hành chính chính thức thì bỏ qua
-            if any(x in cleaned_line.upper() for x in ["MÔN HỌC:", "LỚP:", "BÀI:", "KẾ HOẠCH BÀI DẠY", "TIẾT ", "I. MỤC TIÊU"]):
+            # Chỉ bắt đầu ghi nhận từ dòng chứa từ khóa hành chính chuẩn của phôi giáo án
+            if any(x in cleaned_line.upper() for x in ["KẾ HOẠCH BÀI DẠY", "MÔN HỌC:", "LỚP:", "BÀI:", "TIẾT ", "I. MỤC TIÊU"]):
                 passed_intro = True
             else:
                 continue
 
-        # 🚀 3. THUẬT TOÁN LÀM SẠCH DẤU GẠCH ĐẦU DÒNG THỪA TẠI CÁC ĐỀ MỤC HÀNH CHÍNH
-        # Tìm và xóa các dấu gạch ngang dính ở đầu các đề mục dạng: - I. ; - 1. ; - a) ; - b)
+        # 🚀 3. LOẠI BỎ DÒNG TÊN BỘ SÁCH GIÁO KHOA THEO YÊU CẦU
+        if "BỘ SÁCH:" in cleaned_line.upper() or "CÁNH DIỀU" in cleaned_line.upper() or "KẾT NỐI TRI THỨC" in cleaned_line.upper() or "CHÂN TRỜI SÁNG TẠO" in cleaned_line.upper():
+            continue
+
+        # 🚀 4. LÀM SẠCH DẤU GẠCH ĐẦU DÒNG THỪA TẠI CÁC ĐỀ MỤC HÀNH CHÍNH
         if cleaned_line.startswith('-'):
             sub_text = re.sub(r'^-+\s*', '', cleaned_line).strip()
+            # Xóa gạch nếu là đề mục lớn, tiểu mục số, hoặc tiểu mục chữ cái a), b), c)
             if (re.match(r'^(I|II|III|IV|V|VI|VII)\.', sub_text) or 
+                re.match(r'^[A-Z]\.', sub_text) or
                 re.match(r'^\d+\.', sub_text) or 
-                re.match(r'^[a-z]\)', sub_text) or
+                re.match(r'^[a-z_A-Z0-9]\)', sub_text) or
                 any(x in sub_text.upper() for x in ["MÔN HỌC:", "LỚP:", "BÀI:", "KẾ HOẠCH BÀI DẠY", "THỜI LƯỢNG:"])):
                 cleaned_line = sub_text
 
         # Xử lý làm sạch dấu * đầu dòng văn bản thường
         if cleaned_line.startswith('*'):
             cleaned_line = re.sub(r'^\*+\s*', '- ', cleaned_line)
-        elif cleaned_line.startswith('-') and not re.match(r'^-\s*[a-z0-9I]', cleaned_line):
+        elif cleaned_line.startswith('-') and not re.match(r'^-\s*[a-zA-Z0-9I]', cleaned_line):
             cleaned_line = re.sub(r'^-+\s*', '- ', cleaned_line)
 
         # Xử lý khối bảng dữ liệu biểu bảng
@@ -180,7 +187,7 @@ def export_khbd_to_docx(markdown_content, images_list):
                 doc.paragraphs[-1].alignment = WD_ALIGN_PARAGRAPH.CENTER
             continue
 
-        # Định dạng khối tiêu đề bài dạy chính căn giữa (Chữ Đỏ/Chữ Xanh Đại Thể, 14pt)
+        # Định dạng khối tiêu đề bài dạy chính căn giữa (IN HOA, 14pt)
         if any(x in cleaned_line.upper() for x in ["MÔN HỌC:", "LỚP:", "BÀI:", "KẾ HOẠCH BÀI DẠY", "THỜI LƯỢNG:"]) or re.match(r'^TIẾT\s+\d+', cleaned_line.upper()):
             p = doc.add_paragraph()
             set_paragraph_spacing(p, 4.0, 4.5)
@@ -192,19 +199,14 @@ def export_khbd_to_docx(markdown_content, images_list):
             run.font.color.rgb = MAU_DO if "KẾ HOẠCH BÀI DẠY" in cleaned_line.upper() else MAU_XANH_DUONG
             continue
 
-        # 🚀 4. THUẬT TOÁN ĐỒNG BỘ IN ĐẬM VÀ NHUỘM XANH DƯƠNG CHO TẤT CẢ ĐỀ MỤC LỚN/NHỎ (I., 1., a))
-        if (re.match(r'^(I|II|III|IV|V|VI|VII)\.', cleaned_line) or 
-            re.match(r'^\d+\.', cleaned_line) or 
-            re.match(r'^[a-z]\)', cleaned_line)):
-            
+        # 🚀 5. PHÂN LUỒNG QUY ĐỊNH MÀU SẮC ĐỀ MỤC NGHIÊM NGẶT
+        
+        # HẠNG MỤC A: Đề mục lớn La Mã (I., II.) và Chữ cái lớn (A., B., C., D.) ➔ IN ĐẬM, XANH DƯƠNG
+        if re.match(r'^(I|II|III|IV|V|VI|VII)\.', cleaned_line) or re.match(r'^[A-D]\.\s+', cleaned_line):
             p = doc.add_paragraph()
             set_paragraph_spacing(p, 4.0, 4.5)
             p.alignment = WD_ALIGN_PARAGRAPH.LEFT
-            
-            # Quét dịch công thức toán nếu đề mục chứa ký hiệu toán
             process_runs_with_math(p, cleaned_line)
-            
-            # Ép thuộc tính in đậm, kích thước 14pt và màu xanh dương cho toàn bộ run đề mục
             for r in p.runs:
                 r.bold = True
                 r.font.name = 'Times New Roman'
@@ -212,11 +214,41 @@ def export_khbd_to_docx(markdown_content, images_list):
                 r.font.color.rgb = MAU_XANH_DUONG
             continue
 
-        # Đoạn văn giáo án nội dung thường (Dấu gạch ngang thụt lề)
+        # HẠNG MỤC B: Các tiểu mục số (1. Về kiến thức; 2. Về năng lực; 3. Về phẩm chất) ➔ IN ĐẬM, ĐỎ
+        if re.match(r'^\d+\.\s+Về\s+(kiến thức|năng lực|phẩm chất)', cleaned_line):
+            p = doc.add_paragraph()
+            set_paragraph_spacing(p, 4.0, 4.5)
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            process_runs_with_math(p, cleaned_line)
+            for r in p.runs:
+                r.bold = True
+                r.font.name = 'Times New Roman'
+                r.font.size = Pt(14)
+                r.font.color.rgb = MAU_DO
+            continue
+
+        # HẠNG MỤC C: Các từ khóa tiến trình (- Mục tiêu:, a) Năng lực chung:, b), c)...) ➔ IN ĐẬM, ĐEN
+        if (cleaned_line.startswith('- Mục tiêu:') or 
+            cleaned_line.startswith('- Nội dung:') or 
+            cleaned_line.startswith('- Sản phẩm:') or 
+            cleaned_line.startswith('- Tổ chức thực hiện:') or
+            re.match(r'^[a-c]\)\s+Năng lực\s+(chung|đặc thù|số)', cleaned_line)):
+            
+            p = doc.add_paragraph()
+            set_paragraph_spacing(p, 3.0, 4.5)
+            p.alignment = WD_ALIGN_PARAGRAPH.LEFT
+            process_runs_with_math(p, cleaned_line)
+            for r in p.runs:
+                r.bold = True
+                r.font.name = 'Times New Roman'
+                r.font.size = Pt(14)
+                r.font.color.rgb = MAU_DEN
+            continue
+
+        # Đoạn văn giáo án nội dung thường (Dấu gạch ngang thụt lề, chữ thường, màu đen)
         p = doc.add_paragraph()
         set_paragraph_spacing(p)
         p.alignment = WD_ALIGN_PARAGRAPH.JUSTIFY
-        
         if cleaned_line.startswith('-'):
             p.paragraph_format.left_indent = Inches(0.25)
             
@@ -225,6 +257,7 @@ def export_khbd_to_docx(markdown_content, images_list):
             r.font.name = 'Times New Roman'
             if not r.font.size:
                 r.font.size = Pt(14)
+            r.font.color.rgb = MAU_DEN
 
     if in_table and table_data:
         num_rows = len(table_data)
