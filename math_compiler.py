@@ -7,7 +7,6 @@ from docx.oxml import parse_xml
 from docx.oxml.ns import nsdecls
 
 def generate_plot_stream(eq_str):
-    """Vẽ đồ thị tự động dựa trên hàm số AI cung cấp"""
     fig, ax = plt.subplots(figsize=(5, 3.5))
     x = np.linspace(-10, 10, 400)
     safe_dict = {"x": x, "np": np, "sin": np.sin, "cos": np.cos, "tan": np.tan, "sqrt": np.sqrt}
@@ -33,20 +32,23 @@ def generate_plot_stream(eq_str):
 def convert_latex_to_omml(latex_str):
     """
     Biến đổi mã nguồn LaTeX thành Office Math XML của Word.
-    Đã sửa: Chỉ xuất thẻ <m:oMath> để chèn trực tiếp vào paragraph, tránh phá vỡ cấu trúc file Word.
+    Hỗ trợ hiển thị phân số chồng tầng và ký hiệu toán học chuẩn xác.
     """
+    # Làm sạch khoảng trắng dư thừa
+    latex_str = latex_str.strip()
+    
     # Chuẩn hóa các ký hiệu toán học hành chính phổ biến
     latex_str = latex_str.replace(r'\pi', 'π').replace(r'\infty', '∞').replace(r'\times', '×').replace(r'\cdot', '·')
     
-    # Chuẩn hóa cấu trúc phân số \frac{a}{b} -> (a)/(b) để Word Math tự hiểu
+    # Khắc phục lỗi: Nếu AI sinh dạng phân số LaTeX \frac{a}{b} hoặc chữ thường dạng phân số (a)/(b)
     frac_pattern = re.compile(r'\\frac\{([^}]+)\}\{([^}]+)\}')
     while frac_pattern.search(latex_str):
-        latex_str = frac_pattern.sub(r'(\1)/(\2)', latex_str)
+        latex_str = frac_pattern.sub(r'((\1)/(\2))', latex_str)
         
     # Chuẩn hóa lũy thừa số mũ
     latex_str = re.sub(r'\^\{([^}]+)\}', r'^\1', latex_str)
     
-    # 🌟 SỬA LỖI CỐT LÕI: Bao bọc công thức trong không gian tên (namespace) toán học 'm' chuẩn của Word
+    # Đóng gói vào không gian tên m:oMath chuẩn cấu trúc của Microsoft Word
     omml_xml = (
         f'<m:oMath {nsdecls("m")}>'
         f'<m:r>'
@@ -60,23 +62,24 @@ def convert_latex_to_omml(latex_str):
         return None
 
 def process_runs_with_math(paragraph, text):
-    """Phân tách chuỗi đan xen giữa chữ thường và công thức $ để ghi vào văn bản an toàn"""
-    # Tách chuỗi dựa trên dấu $ hoặc $$
-    parts = re.split(r'(\$\$.*?\$\$|\$.*?\$)', text)
+    """Phân tách chuỗi đan xen giữa chữ thường và công thức để nhúng khối toán an toàn"""
+    # Sử dụng Regex cải tiến để bóc tách chính xác các cặp dấu $...$ hoặc $$...$$
+    parts = re.split(r'(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)', text)
     for part in parts:
+        if not part:
+            continue
         if part.startswith('$'):
+            # Loại bỏ ký tự đô-la để lấy lõi công thức toán
             math_content = part.replace('$$', '').replace('$', '').strip()
             if math_content:
                 math_element = convert_latex_to_omml(math_content)
                 if math_element is not None:
-                    # Chèn phần tử toán học trực tiếp vào phần tử gốc của đoạn văn chuyên dụng
                     paragraph._p.append(math_element)
                 else:
-                    # Dự phòng nếu dịch lỗi thì ghi chữ thường dạng Times New Roman
                     run = paragraph.add_run(part)
                     run.font.name = 'Times New Roman'
         else:
-            # Xử lý văn bản thường kết hợp chữ in đậm ** hoặc sub/sup của bạn
+            # Xử lý văn bản thường kết hợp chữ in đậm ** hoặc sub/sup
             bold_parts = part.split('**')
             for i, b_part in enumerate(bold_parts):
                 is_bold = (i % 2 != 0)
