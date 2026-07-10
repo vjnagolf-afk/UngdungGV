@@ -3,26 +3,26 @@ import streamlit as st
 from document_processor import read_uploaded_docx, read_uploaded_pdf, export_to_docx_vietnam_standard
 
 def render_exam_designer_section(run_ai_prompt_safe_func):
-    """Giao diện phân hệ thiết kế đề kiểm tra chuẩn theo sơ đồ hàng cột cũ"""
+    """Giao diện phân hệ thiết kế đề kiểm tra khôi phục chính xác theo nguyên bản"""
     
     if "ket_qua_de" not in st.session_state: st.session_state["ket_qua_de"] = ""
     if "model_dung" not in st.session_state: st.session_state["model_dung"] = ""
 
-    # --- HÀNG TÁC NGHIỆP: TẠO ĐỀ & THƯ MỤC ---
+    # --- TAB ĐIỀU HƯỚNG CHÍNH ---
     tab_tao_de, tab_thu_muc = st.tabs(["🔴 CHỨC NĂNG TẠO ĐỀ KIỂM TRA AI", "🗂️ THƯ MỤC ĐỀ ĐÃ XÂY DỰNG"])
     
     with tab_tao_de:
-        # CẤU TRÚC HÀNG 1: CẤU HÌNH CHUNG & TẢI TÀI LIỆU
-        col_left_h1, col_right_h1 = st.columns([1.1, 1.0])
+        # --- HÀNG CẤU HÌNH CHUNG & UPLOAD TÀI LIỆU ---
+        col_cấu_hình, col_tài_liệu = st.columns([1.1, 1.0])
         
-        with col_left_h1:
+        with col_cấu_hình:
             hinh_thuc = st.selectbox("Hình thức đề:", ["Trắc nghiệm kết hợp tự luận", "100% Trắc nghiệm", "100% Tự luận"])
             mon_hoc = st.text_input("Môn học:", value="Khoa học tự nhiên")
             khoi_lop = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9", "Khối 10", "Khối 11", "Khối 12"], index=2)
             thoi_gian = st.text_input("Thời gian:", value="45 phút")
             school = st.text_input("Tên trường hành chính:", value="TRƯỜNG THCS NGUYỄN CHÍ THANH")
             
-        with col_right_h1:
+        with col_tài_liệu:
             st.markdown("**TẢI TÀI LIỆU LÊN (Giới hạn kiến thức / Đề cương):**")
             file_mau = st.file_uploader("Upload (Giới hạn file .pdf, .docx):", type=["docx", "pdf"], label_visibility="collapsed")
             
@@ -38,22 +38,22 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
 
         st.markdown("---")
 
-        # CẤU TRÚC HÀNG 2: PHÂN VÙNG TRẮC NGHIỆM & TỰ LUẬN (HAI CỘT SONG SONG)
+        # --- HÀNG HAI KHỐI: PHẦN TRẮC NGHIỆM & PHẦN TỰ LUẬN (CHIA ĐÔI MÀN HÌNH) ---
         col_tn, col_tl = st.columns([1.1, 1.0])
         
+        # 🟥 PHẦN TRẮC NGHIỆM (BÊN TRÁI)
         with col_tn:
-            st.markdown("<h4 style='text-align: center; background-color: #FFE4E6; color: #991B1B; padding: 5px; border-radius: 4px;'>PHẦN TRẮC NGHIỆM</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='text-align: center; background-color: #FFE4E6; color: #991B1B; padding: 5px; border-radius: 4px; margin-bottom: 15px;'>PHẦN TRẮC NGHIỆM</h4>", unsafe_allow_html=True)
             
-            col_tn_l, col_tn_r = st.columns(2)
-            with col_tn_l:
-                st.write("") # Căn lề hàng
+            # Chia thành 2 cột nhỏ đan xen đúng phom ảnh mẫu
+            col_tn_trai, col_tn_phai = st.columns([1.2, 1.0])
+            with col_tn_trai:
                 st.markdown("**Tổng số câu TNKQ:**")
                 sc_nhieu_lua_chon = st.number_input("Số câu nhiều lựa chọn:", min_value=0, max_value=50, value=12)
                 sc_dung_sai = st.number_input("Số câu đúng sai:", min_value=0, max_value=50, value=2)
                 sc_dien_khuyết = st.number_input("Số câu điền khuyết:", min_value=0, max_value=50, value=0)
                 sc_tra_loi_ngan = st.number_input("Số câu trả lời ngắn:", min_value=0, max_value=50, value=0)
-            with col_tn_r:
-                st.write("")
+            with col_tn_phai:
                 tong_diem_tn = st.number_input("Tổng điểm TN:", value=4.00, step=0.25)
                 d_nhieu_lua_chon = st.number_input("Tổng điểm dòng này:", value=3.00, step=0.25, key="d_nlc")
                 d_dung_sai = st.number_input("Tổng điểm dòng này:", value=1.00, step=0.25, key="d_ds")
@@ -62,27 +62,31 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                 
             tong_cau_tn = sc_nhieu_lua_chon + sc_dung_sai + sc_dien_khuyết + sc_tra_loi_ngan
 
+        # 🟩 PHẦN TỰ LUẬN (BÊN PHẢI)
         with col_tl:
-            st.markdown("<h4 style='text-align: center; background-color: #DCFCE7; color: #166534; padding: 5px; border-radius: 4px;'>PHẦN TỰ LUẬN</h4>", unsafe_allow_html=True)
+            st.markdown("<h4 style='text-align: center; background-color: #DCFCE7; color: #166534; padding: 5px; border-radius: 4px; margin-bottom: 15px;'>PHẦN TỰ LUẬN</h4>", unsafe_allow_html=True)
             
-            col_tl_l, col_tl_r = st.columns(2)
-            with col_tl_l:
-                st.write("")
+            col_tl_trai, col_tl_phai = st.columns(2)
+            with col_tl_trai:
                 sc_tu_luan = st.number_input("TỔNG SỐ CÂU TỰ LUẬN:", min_value=0, max_value=20, value=3)
-            with col_tl_r:
-                st.write("")
+            with col_tl_phai:
                 tong_diem_tl = st.number_input("ĐIỂM TỔNG:", value=6.00, step=0.25)
             
-            # Tự động sinh danh sách nhập điểm từng câu tự luận theo số lượng người dùng chọn
-            st.markdown("Chỉ định điểm chi tiết từng câu:")
+            # Khung chỉ định điểm chi tiết xếp gọn gàng ở phía dưới phần tự luận
+            st.markdown("<p style='font-weight: bold; margin-top: 10px; margin-bottom: 2px;'>Chỉ định điểm chi tiết từng câu:</p>", unsafe_allow_html=True)
+            
+            # Sắp xếp các ô nhập điểm tự luận thành hàng ngang (mỗi hàng 3 câu) để giao diện không bị kéo quá dài
             diem_chi_tiet_tl = []
+            cols_diem_tl = st.columns(3)
             for i in range(int(sc_tu_luan)):
-                diem_cau = st.number_input(f"Câu {i+1}:", min_value=0.0, max_value=10.0, value=2.0 if i < 3 else 1.0, step=0.5, key=f"tl_c_{i}")
-                diem_chi_tiet_tl.append((i+1, diem_cau))
+                col_idx = i % 3
+                with cols_diem_tl[col_idx]:
+                    diem_cau = st.number_input(f"Câu {i+1}:", min_value=0.0, max_value=10.0, value=2.0 if i < 3 else 1.0, step=0.5, key=f"tl_c_{i}")
+                    diem_chi_tiet_tl.append((i+1, diem_cau))
 
         st.markdown("---")
 
-        # CẤU TRÚC HÀNG 3: TỶ LỆ MỨC ĐỘ NHẬN THỨC VÀ NÚT BẤM KHỞI TẠO
+        # --- HÀNG CẤU HÌNH MỨC ĐỘ NHẬN THỨC VÀ YÊU CẦU PHỤ ---
         st.markdown("**Tỷ lệ mức độ nhận thức (%):**")
         col_nb, col_th, col_vd, col_vdc = st.columns(4)
         with col_nb:
@@ -96,20 +100,20 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
 
         yeu_cau_khac = st.text_area("Nhập yêu cầu khác (Tùy chọn):", placeholder="Ví dụ: Đề thi có chứa 1 câu hỏi thực tế về đồ thị hàm số bậc nhất...")
 
-        # HÀNG NÚT LỆNH ĐIỀU KHIỂN
+        # --- HÀNG NÚT BẤM ĐIỀU KHIỂN & CHECKBOX ĐÚNG VỊ TRÍ ---
         col_btn_l, col_btn_r = st.columns([1.5, 1.0])
         with col_btn_l:
             nut_sinh_de = st.button("🔴 Tự động khởi tạo ma trận và đề thi", type="primary", use_container_width=True)
         with col_btn_r:
+            st.write(""); st.write("") # Đẩy checkbox xuống thẳng hàng với nút bấm
             st.checkbox("Yêu cầu bám sát kiến thức trong GIÁO TRÌNH, tài liệu", value=True)
 
-        # XỬ LÝ KHI CLICK NÚT SINH ĐỀ CHI TIẾT THEO CẤU HÌNH GIAO DIỆN CHUẨN
+        # --- XỬ LÝ LOGIC KHI GIÁO VIÊN KÍCH HOẠT LỆNH ---
         if nut_sinh_de:
             if int(tl_nhan_biet + tl_thong_hieu + tl_van_dung + tl_vd_cao) != 100:
                 st.error("⚠️ Tổng tỷ lệ mức độ nhận thức phải bằng 100%!")
             else:
                 with st.spinner("🧠 Hệ thống đang xử lý dữ liệu và thiết lập đề thi..."):
-                    # Gom toàn bộ tham số người dùng nhập từ giao diện hàng cột thành Prompt chuyên gia
                     chuỗi_điểm_tl = ", ".join([f"Câu {c_id} ({d}đ)" for c_id, d in diem_chi_tiet_tl])
                     prompt_vi_mo = f"""
                     Bạn là Chuyên gia Khảo thí và Kiểm định Chất lượng Giáo dục phổ thông. Hãy sinh Đề thi cho môn {mon_hoc} - {khoi_lop} (Thời gian: {thoi_gian}).
@@ -137,7 +141,7 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                     st.session_state["ket_qua_de"] = ket_qua
                     st.session_state["model_dung"] = model_thuc_te
 
-        # HIỂN THỊ KẾT QUẢ KHI CÓ DỮ LIỆU
+        # --- KHỐI KẾT QUẢ VÀ TẢI FILE WORD ---
         if st.session_state["ket_qua_de"]:
             st.info(f"🤖 Đề thi được xây dựng thành công bằng mô hình: `{st.session_state['model_dung']}`")
             st.markdown("### 📝 Xem trước nội dung đề thi:")
