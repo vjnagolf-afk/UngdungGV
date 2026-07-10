@@ -29,47 +29,72 @@ def generate_plot_stream(eq_str):
     plt.close(fig)
     return buf
 
+def build_omml_fraction(num_str, den_str):
+    """Tạo cấu trúc XML Math phân số chuẩn của Microsoft Word (m:f)"""
+    return (
+        f'<m:f>'
+        f'<m:num><m:r><m:t>{num_str}</m:t></m:r></m:num>'
+        f'<m:den><m:r><m:t>{den_str}</m:t></m:r></m:den>'
+        f'</m:f>'
+    )
+
 def convert_latex_to_omml(latex_str):
-    """
-    Biến đổi mã nguồn LaTeX thành Office Math XML của Word.
-    Hỗ trợ hiển thị phân số chồng tầng và ký hiệu toán học chuẩn xác.
-    """
-    # Làm sạch khoảng trắng dư thừa
+    """Biến đổi mã nguồn LaTeX thành khối Office Math XML chồng tầng hoàn chỉnh"""
     latex_str = latex_str.strip()
     
-    # Chuẩn hóa các ký hiệu toán học hành chính phổ biến
+    # Chuẩn hóa ký hiệu nhân, chia, vô cùng
     latex_str = latex_str.replace(r'\pi', 'π').replace(r'\infty', '∞').replace(r'\times', '×').replace(r'\cdot', '·')
     
-    # Khắc phục lỗi: Nếu AI sinh dạng phân số LaTeX \frac{a}{b} hoặc chữ thường dạng phân số (a)/(b)
+    # Khử toàn bộ dấu ngoặc đơn dư thừa mà AI hay tạo quanh phân số
+    latex_str = re.sub(r'\(\((.*?)\)/\((.*?)\)\)', r'(\1)/(\2)', latex_str)
+    latex_str = re.sub(r'\((.*?)\)/\((.*?)\)', r'(\1)/(\2)', latex_str)
+
+    # Thuật toán quét và dịch phân số dạng \frac{a}{b} hoặc (a)/(b) sang cấu trúc XML hình thái tầng đứng
+    # Bước A: Dịch cấu trúc \frac{t}{s}
     frac_pattern = re.compile(r'\\frac\{([^}]+)\}\{([^}]+)\}')
     while frac_pattern.search(latex_str):
-        latex_str = frac_pattern.sub(r'((\1)/(\2))', latex_str)
+        match = frac_pattern.search(latex_str)
+        xml_frac = build_omml_fraction(match.group(1), match.group(2))
+        latex_str = latex_str.replace(match.group(0), xml_frac)
         
+    # Bước B: Dịch cấu trúc chữ thường dạng phân số phẳng (s)/(t) hoặc s/t sang cấu trúc tầng đứng
+    plain_frac_pattern = re.compile(r'([a-zA-Z0-9_().+*-]+)/([a-zA-Z0-9_().+*-]+)')
+    while plain_frac_pattern.search(latex_str):
+        match = plain_frac_pattern.search(latex_str)
+        # Bỏ dấu ngoặc đơn bao quanh tử và mẫu nếu có
+        num = match.group(1).strip('()')
+        den = match.group(2).strip('()')
+        # Tránh dịch nhầm đường dẫn hoặc định dạng text không phải toán
+        if '<m:f>' in match.group(0): 
+            break
+        xml_frac = build_omml_fraction(num, den)
+        latex_str = latex_str.replace(match.group(0), xml_frac)
+
     # Chuẩn hóa lũy thừa số mũ
     latex_str = re.sub(r'\^\{([^}]+)\}', r'^\1', latex_str)
     
-    # Đóng gói vào không gian tên m:oMath chuẩn cấu trúc của Microsoft Word
-    omml_xml = (
-        f'<m:oMath {nsdecls("m")}>'
-        f'<m:r>'
-        f'<m:t>{latex_str}</m:t>'
-        f'</m:r>'
-        f'</m:oMath>'
-    )
+    # Bao bọc bằng thẻ m:oMath cốt lõi
+    omml_xml = f'<m:oMath {nsdecls("m")}>'
+    
+    # Kiểm tra xem chuỗi đã được dịch sang cấu trúc phân số XML m:f chưa
+    if '<m:f>' in latex_str:
+        omml_xml += latex_str
+    else:
+        omml_xml += f'<m:r><m:t>{latex_str}</m:t></m:r>'
+        
+    omml_xml += '</m:oMath>'
     try:
         return parse_xml(omml_xml)
     except:
         return None
 
 def process_runs_with_math(paragraph, text):
-    """Phân tách chuỗi đan xen giữa chữ thường và công thức để nhúng khối toán an toàn"""
-    # Sử dụng Regex cải tiến để bóc tách chính xác các cặp dấu $...$ hoặc $$...$$
+    """Phân tách chuỗi đan xen giữa chữ thường và công thức đô-la để nạp khối văn bản"""
     parts = re.split(r'(\$\$[\s\S]*?\$\$|\$[\s\S]*?\$)', text)
     for part in parts:
         if not part:
             continue
         if part.startswith('$'):
-            # Loại bỏ ký tự đô-la để lấy lõi công thức toán
             math_content = part.replace('$$', '').replace('$', '').strip()
             if math_content:
                 math_element = convert_latex_to_omml(math_content)
@@ -79,7 +104,6 @@ def process_runs_with_math(paragraph, text):
                     run = paragraph.add_run(part)
                     run.font.name = 'Times New Roman'
         else:
-            # Xử lý văn bản thường kết hợp chữ in đậm ** hoặc sub/sup
             bold_parts = part.split('**')
             for i, b_part in enumerate(bold_parts):
                 is_bold = (i % 2 != 0)
