@@ -10,10 +10,9 @@ from pypdf import PdfReader
 import gspread
 from datetime import datetime
 
-# Import từ file math_compiler
 from math_compiler import process_runs_with_math, generate_plot_stream
 
-# ================= HÀM HỖ TRỢ GOOGLE SHEETS =================
+# ================= CÁC HÀM HỖ TRỢ GOOGLE SHEETS =================
 SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY' 
 
 def get_khbd_sheet():
@@ -44,45 +43,46 @@ def delete_khbd_from_sheet(row_index):
         return True
     return False
 
-# ================= CÁC HÀM XỬ LÝ VĂN BẢN VÀ EXPORT =================
-def extract_context_from_uploaded_files(uploaded_files):
-    # ... (Giữ nguyên logic cũ của bạn ở đây) ...
-    return "", []
-
-def set_paragraph_spacing(paragraph, before_pt=3.0, after_pt=4.5):
-    # ... (Giữ nguyên logic cũ của bạn ở đây) ...
-    pass
-
-def export_khbd_to_docx(markdown_content, images_list):
-    # ... (Giữ nguyên logic export đã sửa ở phản hồi trước) ...
-    return b""
-
-# ================= GIAO DIỆN CHÍNH (ĐÃ FIX LỖI NAMEERROR) =================
+# ================= GIAO DIỆN KHBD HOÀN CHỈNH =================
 def render_khbd_section(run_ai_prompt_safe_func):
-    st.markdown("<h3 style='text-align: center; color: blue;'>🧠 TRỢ LÝ THIẾT KẾ KHBD AI</h3>", unsafe_allow_html=True)
+    st.markdown("<h3 style='text-align: center; color: blue;'>🧠 TRỢ LÝ THIẾT KẾ KẾ HOẠCH BÀI DẠY (KHBD) AI</h3>", unsafe_allow_html=True)
     
     if "ket_qua_khbd" not in st.session_state: st.session_state["ket_qua_khbd"] = ""
     
-    tab_thiet_ke, tab_thu_vien = st.tabs(["📝 THIẾT KẾ", "🗄️ THƯ VIỆN"])
+    tab_thiet_ke, tab_thu_vien = st.tabs(["📝 THIẾT KẾ KHBD TỰ ĐỘNG", "🗄️ THƯ VIỆN BÀI SOẠN"])
     
     with tab_thiet_ke:
-        ten_bai = st.text_input("Tên bài học:")
-        if st.button("⚡ Thiết kế bài dạy"):
+        ten_bai = st.text_input("Tên bài học / Chủ đề bài dạy:", placeholder="Ví dụ: Bài 4: Tốc độ chuyển động")
+        col_lop, col_bo = st.columns(2)
+        with col_lop: lop_khbd = st.text_input("Lớp dạy:", value="Lớp 7")
+        with col_bo: bo_sach = st.selectbox("Bộ sách:", ["Kết nối tri thức", "Cánh Diều", "Chân trời sáng tạo"])
+        
+        col_tg, col_loai = st.columns(2)
+        with col_tg: thoi_luong = st.text_input("Thời lượng:", value="2 tiết")
+        with col_loai: kieu_khbd = st.selectbox("Mẫu thiết kế:", ["Chuẩn 5512", "Rút gọn", "STEM"])
+        
+        files_tailieu = st.file_uploader("Tài liệu tham khảo:", type=["docx", "pdf", "txt"], accept_multiple_files=True)
+        chk_ai_digital = st.checkbox("Tích hợp năng lực số và AI", value=True)
+        yeu_cau_rieng = st.text_area("Yêu cầu sư phạm bổ sung:")
+
+        c1, c2 = st.columns(2)
+        if c1.button("⚡ Thiết kế bài dạy bằng AI", type="primary", use_container_width=True):
             if ten_bai:
                 with st.spinner("Đang soạn giáo án..."):
-                    ket_qua, _ = run_ai_prompt_safe_func(f"Soạn KHBD chuẩn 5512 bài: {ten_bai}")
+                    ket_qua, _ = run_ai_prompt_safe_func(f"Soạn KHBD bài {ten_bai} lớp {lop_khbd} {bo_sach}")
                     st.session_state["ket_qua_khbd"] = ket_qua
-            else:
-                st.warning("Vui lòng nhập tên bài!")
+            else: st.warning("Vui lòng nhập tên bài!")
+        
+        if c2.button("💾 Lưu tạm thời vào Google Sheets", use_container_width=True):
+            if st.session_state["ket_qua_khbd"]:
+                if save_khbd_to_sheet(ten_bai, lop_khbd, bo_sach, thoi_luong, st.session_state["ket_qua_khbd"]):
+                    st.success("✅ Đã lưu!")
         
         if st.session_state["ket_qua_khbd"]:
             st.markdown(st.session_state["ket_qua_khbd"])
-            if st.button("💾 Lưu tạm thời vào Google Sheets"):
-                if save_khbd_to_sheet(ten_bai or "Bài không tên", "Lớp 7", "Kết nối", "2 tiết", st.session_state["ket_qua_khbd"]):
-                    st.success("✅ Đã lưu vào Sheet!")
                 
     with tab_thu_vien:
-        st.write("### 📂 Danh sách bài soạn đã lưu")
+        st.write("### 📂 Danh sách bài soạn")
         ds_bai = get_all_khbd_from_sheet()
         for idx, bai in enumerate(ds_bai):
             with st.expander(f"{bai.get('Tên bài', 'Bài soạn')} ({bai.get('Thời gian', 'N/A')})"):
@@ -91,6 +91,4 @@ def render_khbd_section(run_ai_prompt_safe_func):
                     st.session_state["ket_qua_khbd"] = bai['Nội dung chi tiết']
                     st.rerun()
                 if c2.button("🗑️ Xóa bài soạn", key=f"del_{idx}"):
-                    if delete_khbd_from_sheet(idx):
-                        st.success("✅ Đã xóa!")
-                        st.rerun()
+                    delete_khbd_from_sheet(idx); st.rerun()
