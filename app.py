@@ -1,4 +1,4 @@
-# app.py - Đã chuyển đổi vị trí khối Trạng thái tài khoản xuống dưới cùng Sidebar
+# app.py - Đã sửa lỗi ModuleNotFoundError của phân hệ KHBD và hạ trạng thái xuống cuối
 import streamlit as st
 import pandas as pd
 import sqlite3
@@ -17,7 +17,7 @@ from ai_service import run_ai_prompt_safe
 from exam_designer import render_exam_designer_section 
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
-from khbd_section import render_khbd_section  
+from khbd_manager import render_khbd_section  # 🚀 ĐÃ SỬA CHÍNH XÁC KHBD_MANAGER TẠI ĐÂY
 from danh_gia_manager import render_assessment_section
 
 from org_manager import render_org_section
