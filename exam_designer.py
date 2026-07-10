@@ -28,69 +28,66 @@ def sync_exam_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
     except: return False
 
 def render_exam_designer_section(run_ai_prompt_safe_func):
-    if "ket_qua_de" not in st.session_state: st.session_state["ket_qua_de"] = ""
-    if "model_dung" not in st.session_state: st.session_state["model_dung"] = ""
+    st.markdown("<h3 style='text-align: center; color: blue;'>Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường THCS Nguyễn Chí Thanh - Phường Tân Lập tỉnh Đắk Lắk</h3>", unsafe_allow_html=True)
     
-    # Init states
-    if "save_ten_de" not in st.session_state: st.session_state["save_ten_de"] = "Đề kiểm tra giữa học kỳ I"
-    if "save_school" not in st.session_state: st.session_state["save_school"] = "TRƯỜNG THCS NGUYỄN CHÍ THANH"
-    if "save_mon_hoc" not in st.session_state: st.session_state["save_mon_hoc"] = "Khoa học tự nhiên"
-    if "save_khoi_lop" not in st.session_state: st.session_state["save_khoi_lop"] = "Lớp 8"
-    if "save_thoi_gian" not in st.session_state: st.session_state["save_thoi_gian"] = "45 phút"
+    # Tabs chính
+    tab_tao, tab_thu_muc = st.tabs(["CHỨC NĂNG TẠO ĐỀ KIỂM TRA", "THƯ MỤC LƯU ĐỀ ĐÃ XD"])
+    
+    with tab_tao:
+        # Hàng 1: Menu chính
+        col1, col2, col3, col4 = st.columns(4)
+        with col1: st.selectbox("MENU MÔN HỌC", ["Khoa học tự nhiên", "Toán", "Vật lý", "Hóa học"])
+        with col2: st.selectbox("MENU LỚP", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9"])
+        with col3: st.selectbox("HÌNH THỨC KT", ["Trắc nghiệm kết hợp tự luận", "100% Trắc nghiệm"])
+        with col4: st.text_input("THỜI GIAN", "45 phút")
 
-    tab_tao_de, tab_thu_muc = st.tabs(["🔴 CHỨC NĂNG TẠO ĐỀ KIỂM TRA AI", "🗂️ THƯ MỤC ĐỀ ĐÃ XÂY DỰNG"])
-    
-    with tab_tao_de:
-        # Bố cục hàng 1: Thông tin cấu hình và Tài liệu
-        col_cfg, col_files = st.columns([1, 1])
-        with col_cfg:
-            hinh_thuc = st.selectbox("Hình thức đề:", ["Trắc nghiệm kết hợp tự luận", "100% Trắc nghiệm", "100% Tự luận"])
-            st.session_state["save_mon_hoc"] = st.text_input("Môn học:", value=st.session_state["save_mon_hoc"])
-            st.session_state["save_khoi_lop"] = st.selectbox("Khối lớp:", ["Lớp 6", "Lớp 7", "Lớp 8", "Lớp 9", "Khối 10", "Khối 11", "Khối 12"], index=2)
-            st.session_state["save_thoi_gian"] = st.text_input("Thời gian:", value=st.session_state["save_thoi_gian"])
-            st.session_state["save_school"] = st.text_input("Tên trường:", value=st.session_state["save_school"])
-        with col_files:
-            file_de_cuong = st.file_uploader("1. Tải Đề Cương (.docx, .pdf):", type=["docx", "pdf"], key="exam_upload_de_cuong_2026")
-            file_ma_tran = st.file_uploader("2. Tải Khung Ma Trận / Đặc tả:", type=["docx", "pdf"], key="exam_upload_ma_tran_2026")
-            
-        # Xử lý file (giữ nguyên logic)
-        noi_dung_de_cuong = read_uploaded_docx(file_de_cuong) if file_de_cuong and file_de_cuong.name.endswith(".docx") else (read_uploaded_pdf(file_de_cuong) if file_de_cuong else "")
-        noi_dung_ma_tran = read_uploaded_docx(file_ma_tran) if file_ma_tran and file_ma_tran.name.endswith(".docx") else (read_uploaded_pdf(file_ma_tran) if file_ma_tran else "")
+        # Hàng 2: Nhận thức
+        st.markdown("**Tỷ lệ mức độ nhận thức (%):**")
+        c_nb, c_th, c_vd, c_vdc = st.columns(4)
+        tl_nb = c_nb.number_input("Nhận biết:", value=40, step=10)
+        tl_th = c_th.number_input("Thông hiểu:", value=30, step=10)
+        tl_vd = c_vd.number_input("Vận dụng:", value=20, step=10)
+        tl_vdc = c_vdc.number_input("Vận dụng cao:", value=10, step=10)
+
+        # Hàng 3: Tên đề và File
+        c_name, c_file1, c_file2 = st.columns([2, 1, 1])
+        with c_name: st.text_input("Tên bài kiểm tra / Đề số:", "Kiểm tra đánh giá giữa kì I")
+        with c_file1: st.file_uploader("Tải Đề Cương (.docx, .pdf):")
+        with c_file2: st.file_uploader("Tải Đề mẫu ma trận (.docx):")
 
         st.divider()
-        
-        # Bố cục phần Trắc nghiệm & Tự luận
+
+        # PHẦN TRẮC NGHIỆM & TỰ LUẬN
         c_tn, c_tl = st.columns(2)
-        with c_tn:
-            with st.container(border=True):
-                st.markdown("#### 🔴 PHẦN TRẮC NGHIỆM")
-                sc_nlc = st.number_input("Số câu nhiều lựa chọn:", 0, 50, 12)
-                sc_ds = st.number_input("Số câu đúng sai:", 0, 50, 2)
-                sc_dk = st.number_input("Số câu điền khuyết:", 0, 50, 0)
-                sc_tln = st.number_input("Số câu trả lời ngắn:", 0, 50, 0)
-                tong_diem_tn = st.number_input("Tổng điểm TN:", value=4.00, step=0.25)
-        with c_tl:
-            with st.container(border=True):
-                st.markdown("#### 🟢 PHẦN TỰ LUẬN")
-                sc_tl = st.number_input("TỔNG SỐ CÂU TỰ LUẬN:", 0, 20, 3)
-                tong_diem_tl = st.number_input("ĐIỂM TỔNG TỰ LUẬN:", value=6.00, step=0.25)
-                with st.expander("Chỉ định điểm chi tiết từng câu"):
-                    diem_ct = [st.number_input(f"Câu {i+1}", value=2.0) for i in range(sc_tl)]
-
-        # Nhận thức & Yêu cầu cuối
-        st.markdown("**Tỷ lệ mức độ nhận thức (%):**")
-        cols_tyle = st.columns(4)
-        tl_nb = cols_tyle[0].number_input("Nhận biết:", 0, 100, 40, 10)
-        tl_th = cols_tyle[1].number_input("Thông hiểu:", 0, 100, 30, 10)
-        tl_vd = cols_tyle[2].number_input("Vận dụng:", 0, 100, 20, 10)
-        tl_vdc = cols_tyle[3].number_input("Vận dụng cao:", 0, 100, 10, 10)
-
-        st.session_state["save_ten_de"] = st.text_input("Tên bài kiểm tra / Đề số:", value=st.session_state["save_ten_de"])
-        yeu_cau_khac = st.text_area("Yêu cầu khác:")
         
-        # Nút bấm và logic gọi AI (Giữ nguyên phần gọi `run_ai_prompt_safe_func` và logic tạo Word như cũ)
+        with c_tn:
+            st.markdown("### TRẮC NGHIỆM | 4.0 | Điểm")
+            # Căn chỉnh 2 cột cho nhãn và input
+            for label, key in [("Số câu nhiều lựa chọn", "nlc"), ("Số câu đúng/sai", "ds"), ("Số câu điền khuyết", "dk"), ("Số câu trả lời ngắn", "tln")]:
+                cl1, cl2, cl3 = st.columns([2, 1, 1])
+                cl1.write(f"**{label}:**")
+                cl2.number_input(f"sl_{key}", label_visibility="collapsed")
+                cl3.number_input(f"diem_{key}", label_visibility="collapsed")
+                st.write("---") # Đường kẻ giữa các dòng
+
+        with c_tl:
+            # Logic: Số câu TL tự sinh
+            sc_tl = st.number_input("TỰ LUẬN", value=4)
+            st.text_input("6.0", value="6.0", disabled=True)
+            st.write("Điểm")
+            
+            for i in range(int(sc_tl)):
+                cl1, cl2, cl3 = st.columns([2, 1, 1])
+                cl1.write(f"**Câu {i+1}:**")
+                cl2.number_input(f"tl_{i}", label_visibility="collapsed", value=2.0 if i<3 else 1.0)
+                cl3.write("điểm")
+
+        st.markdown("**Yêu cầu khác:**")
+        st.text_area("Ví dụ: ...", label_visibility="collapsed")
+        
         if st.button("🔴 Tự động khởi tạo ma trận và đề thi", type="primary", use_container_width=True):
-             # [Dán logic xử lý AI của bạn vào đây]
+             # [Giữ nguyên logic sinh đề, xuất Word, đồng bộ Sheet cũ của bạn tại đây]
+             pass
              pass
 
     with tab_thu_muc:
