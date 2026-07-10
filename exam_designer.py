@@ -1,4 +1,4 @@
-# exam_designer.py - BẢN CẬP NHẬT MENU MÔN HỌC ĐẦY ĐỦ
+# exam_designer.py - BẢN FIX MÀU NÚT BẤM, ĐỊNH DẠNG CÂU HỎI & TOÁN HỌC/ĐỒ THỊ
 import streamlit as st
 import gspread
 from document_processor import read_uploaded_docx, read_uploaded_pdf, export_to_docx_vietnam_standard
@@ -43,7 +43,7 @@ def sync_exam_to_google_sheet(ten_de, mon, khoi, thoi_gian, noi_dung):
 # ================= ĐOẠN 2: GIAO DIỆN CHÍNH =================
 def render_exam_designer_section(run_ai_prompt_safe_func):
     
-    # CSS Customization để thu nhỏ giao diện, tối ưu lề và border
+    # CSS Customization: Đã bổ sung chỉnh màu chữ cho nút Primary thành màu trắng
     st.markdown("""
         <style>
             .block-container {
@@ -68,6 +68,16 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                 font-weight: bold !important;
                 font-size: 15px !important;
             }
+            /* Ép nút sinh đề thành màu trắng nổi bật trên nền đỏ */
+            button[kind="primary"] {
+                background-color: #ff3b3b !important;
+                border: 1px solid #cc0000 !important;
+            }
+            button[kind="primary"] * {
+                color: #ffffff !important;
+                font-weight: bold !important;
+                font-size: 16px !important;
+            }
         </style>
     """, unsafe_allow_html=True)
     
@@ -83,7 +93,6 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
     tab_tao_de, tab_thu_muc = st.tabs(["CHỨC NĂNG TẠO ĐỀ KIỂM TRA", "THƯ MỤC LƯU ĐỀ ĐÃ XD"])
     
     with tab_tao_de:
-        # --- HÀNG 1: MENU NGANG CHỮ XANH ---
         col1, col2, col3, col4 = st.columns(4)
         with col1:
             st.markdown("<h6 style='color:blue; font-weight:bold; text-align:center;'>MENU MÔN HỌC</h6>", unsafe_allow_html=True)
@@ -108,7 +117,6 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
             st.markdown("<h6 style='color:blue; font-weight:bold; text-align:center;'>THỜI GIAN</h6>", unsafe_allow_html=True)
             st.session_state["save_thoi_gian"] = st.text_input("Thời gian:", value=st.session_state["save_thoi_gian"], label_visibility="collapsed")
 
-        # --- HÀNG 2: TỶ LỆ NHẬN THỨC ---
         st.markdown("<h6 style='color:red; font-weight:bold; margin-top:15px;'>Tỷ lệ mức độ nhận thức (%):</h6>", unsafe_allow_html=True)
         col_nb, col_th, col_vd, col_vdc = st.columns(4)
         with col_nb:
@@ -130,7 +138,6 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- HÀNG 3: TÊN ĐỀ & UPLOAD FILE ---
         col_name, col_f1, col_f2 = st.columns([2, 1.2, 1.2])
         with col_name:
             st.markdown("<h6 style='color:red; font-weight:bold;'>Tên bài kiểm tra / Đề số:</h6>", unsafe_allow_html=True)
@@ -153,7 +160,6 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
 
         st.markdown("<br>", unsafe_allow_html=True)
 
-        # --- HÀNG 4: BỐ CỤC TRẮC NGHIỆM VÀ TỰ LUẬN ---
         col_tn, col_space, col_tl = st.columns([1.1, 0.1, 1.1])
         
         with col_tn:
@@ -185,8 +191,6 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
             
             tong_cau_tn = sc_nhieu_lua_chon + sc_dung_sai + sc_dien_khuyết + sc_tra_loi_ngan
             tong_diem_tn = d_nhieu_lua_chon + d_dung_sai + d_dien_khuyết + d_tra_loi_ngan
-            
-            # GIỮ CHÍNH XÁC SỐ THẬP PHÂN KHI CỘNG
             hien_thi_tn = str(round(tong_diem_tn, 2))
             
             header_tn_placeholder.markdown(f"""
@@ -217,12 +221,9 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                 tong_diem_tl += d_c
                 diem_chi_tiet_tl.append((i+1, d_c))
                 
-            # GIỮ CHÍNH XÁC SỐ THẬP PHÂN KHI CỘNG
             hien_thi_tl = str(round(tong_diem_tl, 2))
-            
             ph_tong_diem_tl.markdown(f"<div style='background-color:white; border:2px solid #FFD700; height:45px; line-height:40px; text-align:center; color:red; font-weight:bold; font-size:18px;'>{hien_thi_tl}</div>", unsafe_allow_html=True)
 
-        # --- HÀNG 5: YÊU CẦU KHÁC & CHECKBOX BÁM SÁT ---
         st.markdown("<br>", unsafe_allow_html=True)
         c_yc, c_chk = st.columns([1, 1])
         with c_yc:
@@ -232,20 +233,21 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
 
         yeu_cau_khac = st.text_area("Yêu cầu khác", placeholder="Ví dụ: ....", label_visibility="collapsed")
 
-        # NÚT BẤM VÀ CẤU HÌNH BỔ SUNG
         col_btn_l, col_btn_r = st.columns([1.5, 1.0])
         with col_btn_l:
-            nut_sinh_de = st.button("🔴 Tự động khởi tạo ma trận và đề thi", type="primary", use_container_width=True)
+            # Đổi nhãn nút thành in hoa nổi bật
+            nut_sinh_de = st.button("🚀 TỰ ĐỘNG KHỞI TẠO MA TRẬN VÀ ĐỀ THI", type="primary", use_container_width=True)
         with col_btn_r:
             mo_hinh_uu_tien = st.selectbox("Mô hình xử lý đề thi:", ["3.1 Flash-Lite", "3.5 Flash", "3.1 Pro", "Tư duy mở rộng"], index=0, label_visibility="collapsed")
 
-        # ================= ĐOẠN 3: LOGIC GỌI AI VÀ EXPORT (GIỮ NGUYÊN 100%) =================
+        # ================= ĐOẠN 3: LOGIC GỌI AI VÀ EXPORT CẢI TIẾN PROMPT =================
         if nut_sinh_de:
             if int(tl_nhan_biet + tl_thong_hieu + tl_van_dung + tl_vd_cao) != 100:
                 st.error("⚠️ Tổng tỷ lệ mức độ nhận thức phải bằng 100%!")
             else:
                 with st.spinner("🧠 Hệ thống đang lập bảng Ma trận, Bản đặc tả và dựng đề thi..."):
-                    chuỗi_điểm_tl = ", ".join([f"Câu {c_id} ({d}đ)" for c_id, d in diem_chi_tiet_tl])
+                    # CHỈNH SỬA CHUỖI ĐIỂM: ÉP ĐỊNH DẠNG SẠCH
+                    chuỗi_điểm_tl_clean = ", ".join([f"Câu {c_id}. ({d} điểm)" for c_id, d in diem_chi_tiet_tl])
                     
                     lenh_bam_sat = "\n- YÊU CẦU QUAN TRỌNG: Bám sát 100% nội dung đề cương tài liệu tải lên." if bam_sat else ""
                     
@@ -260,7 +262,8 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                     3. NỘI DUNG ĐỀ KIỂM TRA CHI TIẾT:
                         - Hình thức đề: {hinh_thuc}
                         - Phần Trắc nghiệm ({tong_diem_tn} điểm, {tong_cau_tn} câu): {sc_nhieu_lua_chon} câu nhiều lựa chọn, {sc_dung_sai} câu đúng sai.
-                        - Phần Tự luận ({tong_diem_tl} điểm): Phân bổ câu {chuỗi_điểm_tl}
+                        - Phần Tự luận ({tong_diem_tl} điểm): Gồm các câu {chuỗi_điểm_tl_clean}. 
+                        LƯU Ý ĐẶC BIỆT: TUYỆT ĐỐI KHÔNG ghi chú mức độ nhận thức (NB, TH, VD) hay tên bài học vào cạnh tên câu hỏi. Trình bày chính xác theo định dạng: "Câu X. (Y điểm): [Nội dung câu hỏi]". Ví dụ: "Câu 1. (2.5 điểm): "
                         - Tỷ lệ nhận thức: Nhận biết {tl_nhan_biet}%, Thông hiểu {tl_thong_hieu}%, Vận dụng {tl_van_dung}%, Vận dụng cao {tl_vd_cao}%.
                         - Yêu cầu bổ sung: {yeu_cau_khac} {lenh_bam_sat}
                     
@@ -270,7 +273,10 @@ def render_exam_designer_section(run_ai_prompt_safe_func):
                     [FILE MA TRẬN ĐỂ BẮT CHƯỚC (NẾU CÓ)]:
                     {noi_dung_ma_tran if 'noi_dung_ma_tran' in locals() and noi_dung_ma_tran else "Tự sinh dựa theo số lượng câu trên giao diện."}
                     
-                    QUY ĐỊNH ĐỊNH DẠNG: Công thức toán đặt trong $...$, các đáp án trắc nghiệm A., B., C., D. bắt buộc viết tách dòng độc lập.
+                    QUY ĐỊNH ĐỊNH DẠNG TỐI QUAN TRỌNG KHI XUẤT WORD:
+                    - CÔNG THỨC TOÁN, LÝ, HÓA: BẮT BUỘC dùng cú pháp LaTeX chuẩn và bọc trong $...$ (inline) hoặc $$...$$ (display block). Ví dụ: $v = \frac{{s}}{{t}}$ hoặc $16.67 \, \text{{m/s}}$. KHÔNG dùng ký tự văn bản thường cho phân số hay công thức.
+                    - ĐỒ THỊ VÀ BẢNG BIỂU: Nếu đề thi yêu cầu có đồ thị (quãng đường - thời gian, v.v.), hãy sử dụng mã LaTeX (TikZ/pgfplots) đặt trong $$...$$ để hệ thống vẽ đồ thị tự động vào Word, HOẶC thiết lập Bảng số liệu rõ ràng thay vì chỉ viết "(Hình minh họa: ...)". Tuyệt đối không để trống hình vẽ.
+                    - CÁC ĐÁP ÁN TRẮC NGHIỆM: Bắt buộc viết tách dòng độc lập cho A, B, C, D.
                     """
                     ket_qua, model_thuc_te = run_ai_prompt_safe_func(prompt_vi_mo, mo_hinh_uu_tien)
                     st.session_state["ket_qua_de"] = ket_qua
