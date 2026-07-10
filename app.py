@@ -1,16 +1,15 @@
-# app.py - Bản vá dứt điểm lỗi ImportError đường dẫn tương đối trên Streamlit Cloud
+# app.py - Đã chuyển đổi vị trí khối Trạng thái tài khoản xuống dưới cùng Sidebar
 import streamlit as st
 import pandas as pd
 import sqlite3
 import os
 import sys
 
-# 🚀 THUẬT TOÁN ĐƯỜNG DẪN: Ép hệ thống tìm module trong cùng thư mục chạy ứng dụng
+# THUẬT TOÁN ĐƯỜNG DẪN: Ép hệ thống tìm module trong cùng thư mục chạy ứng dụng
 current_dir = os.path.dirname(os.path.abspath(__file__))
 if current_dir not in sys.path:
     sys.path.insert(0, current_dir)
 
-# 🚀 BỎ DẤU CHẤM ĐỂ TRÁNH LỖI ĐỊNH DẠNG PACKAGE CỦA PYTHON
 from database_manager import check_if_admin_device, inject_demo_data, DB_PATH
 from ai_service import run_ai_prompt_safe
 
@@ -18,7 +17,7 @@ from ai_service import run_ai_prompt_safe
 from exam_designer import render_exam_designer_section 
 from grade_manager import render_grade_manager_section
 from tkb_manager import render_tkb_manager  
-from khbd_manager import render_khbd_section  
+from khbd_section import render_khbd_section  
 from danh_gia_manager import render_assessment_section
 
 from org_manager import render_org_section
@@ -41,7 +40,9 @@ st.markdown("<h1 style='text-align: center; color: darkred; font-weight: bold;'>
 st.markdown("<p style='text-align: center; color: #0056b3; font-weight: bold; font-size: 16px;'>Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường THCS Nguyễn Chí Thanh - Phường Tân Lập tỉnh Đắk Lắk</p>", unsafe_allow_html=True)
 st.markdown("---")
 
-# --- MENU ĐIỀU HƯỚNG TỔNG TẠI SIDEBAR ---
+# ==================================================================================
+# --- THANH ĐIỀU HƯỚNG TỔNG TẠI SIDEBAR (VỊ TRÍ 1 - TRÊN CÙNG) ---
+# ==================================================================================
 st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
 
@@ -52,22 +53,9 @@ phan_he = st.sidebar.radio(
     key="app_main_sidebar_navigation_root_key_2026_v9"
 )
 
-# --- KHỐI HIỂN THỊ Ô NHẬP KEY THEO THIẾT BỊ ĐỐI TƯỢNG ---
 st.sidebar.markdown("---")
-st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
 
-if is_admin_owner:
-    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-    st.sidebar.caption("Tự động kích hoạt quyền đặc quyền chạy trực tiếp bằng Key hệ thống.")
-    st.session_state["gv_api_key_input"] = ""
-else:
-    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
-    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
-    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
-    if st.session_state["gv_api_key_input"]:
-        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
-
-# --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT ---
+# --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (VỊ TRÍ 2 - Ở GIỮA) ---
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     st.sidebar.markdown("### 🛠️ CHỨC NĂNG GIÁO VIÊN")
     menu = st.sidebar.selectbox("Nội dung giảng dạy", ["1. Thiết kế KHBD", "2. Thiết kế Đề KT", "3. Đánh giá HS", "4. Quản lý điểm (SMAS)", "5. Quản lý TKB","6. Thiết kế bài dạy STEM","7. Kế hoạch công tác chủ nhiệm lớp"], label_visibility="collapsed", key="menu_gv_selectbox_v9")
@@ -124,3 +112,20 @@ else:  # Phân hệ Quản lý tổ chuyên môn
         else:
             st.subheader("📋 Danh sách phân công hiện tại:")
             st.dataframe(df_tv, use_container_width=True)
+
+# ==================================================================================
+# --- KHỐI HIỂN THỊ Ô NHẬP KEY THEO THIẾT BỊ ĐỐI TƯỢNG (VỊ TRÍ 3 - ĐẨY XUỐNG CUỐI CÙNG) ---
+# ==================================================================================
+st.sidebar.markdown("---")
+st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
+
+if is_admin_owner:
+    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
+    st.sidebar.caption("Tự động kích hoạt quyền đặc quyền chạy trực tiếp bằng Key hệ thống.")
+    st.session_state["gv_api_key_input"] = ""
+else:
+    st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
+    st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
+    st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
+    if st.session_state["gv_api_key_input"]:
+        st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
