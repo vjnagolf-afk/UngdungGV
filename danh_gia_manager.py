@@ -7,6 +7,19 @@ from docx.oxml import OxmlElement
 from docx.oxml.ns import qn
 import io
 import re
+import gspread
+from google.oauth2.service_account import Credentials
+from datetime import datetime
+
+# Cấu hình Sheets
+SHEET_ID = '1C6642jk_oQ0g9UC2By2qsNxxfQVR0MrZYj52tRdWDlY'
+
+def get_danhgia_sheet():
+    creds_dict = dict(st.secrets["GOOGLE_KEY"])
+    scopes = ['https://www.googleapis.com/auth/spreadsheets', 'https://www.googleapis.com/auth/drive']
+    creds = Credentials.from_service_account_info(creds_dict, scopes=scopes)
+    client = gspread.authorize(creds)
+    return client.open_by_key(SHEET_ID).worksheet("DANH_GIA_HS")
 
 def set_paragraph_spacing(paragraph, before_pt=3.0, after_pt=4.5):
     p_pr = paragraph._p.get_or_add_pPr()
@@ -166,6 +179,13 @@ def render_assessment_section(run_ai_prompt_safe_func):
                 if st.button("📥 Lưu vào thư viện hệ thống", use_container_width=True):
                     st.session_state["lich_su_rubric"].append({"Nội dung": noi_dung, "Lớp": lop, "Data": st.session_state["ket_qua_rubric"]})
                     st.success("✅ Đã lưu bảng Rubric thành công!")
+                    # Thay vì nút Lưu cũ, thầy dùng nút này:
+                if st.button("☁️ Lưu Đồng Bộ Lên Google Sheets", type="primary", use_container_width=True):
+    try:
+        sheet = get_danhgia_sheet()
+        sheet.append_row([noi_dung, lop, hinh_thuc, str(st.session_state["ket_qua_rubric"]), datetime.now().strftime("%Y-%m-%d %H:%M:%S")])
+        st.success("✅ Đã lưu vào Sheets thành công!")
+    except Exception as e: st.error(f"Lỗi: {e}")
             else:
                 st.caption("Nội dung bảng Rubric sẽ hiển thị tại đây sau khi khởi tạo bằng AI...")
 
@@ -173,6 +193,18 @@ def render_assessment_section(run_ai_prompt_safe_func):
         st.markdown("### 🗄️ DANH SÁCH CÁC TIÊU CHÍ RUBRIC ĐÃ LƯU TRỮ")
         if not st.session_state["lich_su_rubric"]:
             st.info("Chưa có tiêu chí nào được lưu trong phiên làm việc này.")
+            with tab_thu_vien:
+        st.markdown("### 🗄️ QUẢN LÝ KHO ĐÁM MÂY")
+        if st.button("🔄 Tải dữ liệu mới nhất từ Google Sheets", use_container_width=True):
+            st.session_state["cloud_data_rubric"] = get_danhgia_sheet().get_all_values()
+    # Hiển thị dữ liệu từ Sheets
+    for idx, row in enumerate(st.session_state.get("cloud_data_rubric", [])):
+        if len(row) >= 4:
+            with st.expander(f"📊 {row[0]} (Lớp {row[1]} - Lưu lúc {row[4]})"):
+                st.markdown(row[3]) # Nội dung Rubric
+                if st.button("🗑️ Xóa vĩnh viễn", key=f"del_cloud_{idx}"):
+                    get_danhgia_sheet().delete_row(idx + 1)
+                    st.rerun()
         else:
             for idx, item in enumerate(st.session_state["lich_su_rubric"]):
                 col_exp, col_del = st.columns([0.88, 0.12])
