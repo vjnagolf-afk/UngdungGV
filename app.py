@@ -106,6 +106,10 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     if menu == "1. Thiết kế KHBD": 
         render_khbd_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "2. Thiết kế Đề KT": 
+        # Thêm dòng này để kiểm tra xem nó có vào được hàm không
+        # st.write("Đang tải giao diện thiết kế đề...") 
+        from exam_designer import render_exam_designer_section
+        from ai_service import run_ai_prompt_safe
         render_exam_designer_section(lambda p, m: run_ai_prompt_safe(p, m, is_admin_owner))
     elif menu == "3. Đánh giá HS": 
         render_assessment_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
