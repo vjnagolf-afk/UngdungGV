@@ -14,7 +14,7 @@ def backup_to_googlesheet(data_dict):
     """
     try:
         # Cấu hình kết nối Google Sheet qua file JSON credential
-        scope = ['https://spreadsheets.google.com/feeds', 'https://www.googleapis.com/auth/drive']
+        scope = ['https://google.com', 'https://googleapis.com']
         creds = ServiceAccountCredentials.from_json_keyfile_name('google_key.json', scope)
         client = gspread.authorize(creds)
         sheet = client.open("Data_Nhat_Ky_Giang_Day").sheet1
@@ -23,10 +23,13 @@ def backup_to_googlesheet(data_dict):
         sheet.append_row([data_dict['timestamp'], data_dict['query'], data_dict['response']])
     except Exception as e:
         st.error(f"Lỗi khi sao lưu dữ liệu lên hệ thống Cloud: {e}")
-# Cấu hình Embedding model (Sử dụng Google Gemini Embedding)
+
+# =========================================================================
+# CẬP NHẬT: Thay đổi mô hình Embedding mới để sửa lỗi 404 NOT_FOUND
+# =========================================================================
 def get_embedding_model():
-    # Lưu ý: Thay API_KEY bằng biến môi trường hoặc input của giáo viên
-    return GoogleGenerativeAIEmbeddings(model="models/embedding-001")
+    # Sử dụng text-embedding-04 thay cho model cũ đã bị ngừng hỗ trợ
+    return GoogleGenerativeAIEmbeddings(model="models/text-embedding-04")
 
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
