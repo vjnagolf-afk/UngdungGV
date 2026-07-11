@@ -25,7 +25,7 @@ def backup_to_googlesheet(data_dict):
         st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {e}")
 
 def get_embedding_model():
-    """
+    # Đã xóa dấu ngoặc kép gây lỗi ở đây
     api_key = st.secrets["GEMINI_API_KEY"]
     return GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
 
@@ -55,10 +55,8 @@ def process_and_vectorize(file_path):
 def query_rag(vectorstore, question):
     # Tìm kiếm tài liệu liên quan
     retriever = vectorstore.as_retriever(search_kwargs={"k": 3})
-    docs = retriever.invoke(question)  # <-- Thay đổi tại đây
+    docs = retriever.invoke(question)  
 
     # Ghép nội dung để gửi cho AI
     context = "\n".join([d.page_content for d in docs])
     return context
-
-
