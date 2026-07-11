@@ -26,9 +26,8 @@ def backup_to_googlesheet(data_dict):
 
 def get_embedding_model():
     """
-    Cấu hình Embedding model sử dụng mô hình Gemini chính xác
-    """
-    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+    api_key = st.secrets["GEMINI_API_KEY"]
+    return GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
 
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
