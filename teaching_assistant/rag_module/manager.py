@@ -11,6 +11,9 @@ sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../'
 from ai_service import run_ai_prompt_safe 
 from .processor import process_and_vectorize, query_rag, backup_to_googlesheet
 
+# TÍCH HỢP MODULE XỬ LÝ CÔNG THỨC TOÁN/LÝ/HÓA
+from .latex_formatter import process_science_formulas
+
 def extract_text_safely(raw_output):
     """
     Hàm lột vỏ dữ liệu: Cắt bỏ chữ ký bảo mật Base64 của LangChain
@@ -108,7 +111,6 @@ def render_rag():
 
             with st.chat_message("assistant"):
                 with st.spinner("🔍 AI đang truy xuất các đoạn ngữ cảnh liên quan..."):
-                    clean_response = "" 
                     model_info = "AI"
                     
                     try:
@@ -137,37 +139,32 @@ Câu hỏi: {question}"""
                         # 3. Làm sạch mảng JSON của LangChain
                         clean_response = extract_text_safely(raw_answer)
                         
-                        # 4. --- BẢO VỆ CÔNG THỨC KHOA HỌC TỰ NHIÊN ---
-                        # Nhân đôi dấu gạch chéo ngược để Streamlit nhận diện đúng ký tự \ trong LaTeX
-                        clean_response = clean_response.replace('\\', '\\\\')
-                        # Làm sạch các ký tự xuống dòng thô nếu có
-                        clean_response = clean_response.replace('\\\\n', '\n').replace('\\\\t', '\t')
+                        # 4. --- GỌI MODULE CHUẨN HÓA CÔNG THỨC ---
+                        final_response = process_science_formulas(clean_response)
                         
                         # 5. Hiển thị kết quả trực tiếp
-                        st.markdown(clean_response)
+                        st.markdown(final_response)
                         st.caption(f"🤖 Sinh bởi: {model_info}")
                         
                         # Lưu lịch sử
                         st.session_state["chat_history"].append({
                             "role": "assistant", 
-                            "content": clean_response,
+                            "content": final_response,
                             "model_info": model_info
                         })
                         
                         # 6. Sao lưu tự động
-                        # Lưu ý: Hàm backup_to_googlesheet trong file processor.py đã tự gọi st.secrets bên trong nó
-                        # Nên ở đây chúng ta chỉ cần truyền dictionary dữ liệu là đủ.
                         backup_to_googlesheet({
                             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             'query': question,
-                            'response': clean_response
+                            'response': final_response
                         })
                         st.caption("✅ Đã tự động đồng bộ cuộc hội thoại này vào Nhật ký giảng dạy trên Google Sheet!")
                         
                     except Exception as e:
                         st.error(f"❌ Đã xảy ra lỗi trong quá trình xử lý câu hỏi: {str(e)}")
 
-
+        # Nút xóa lịch sử trò chuyện
         if st.session_state["chat_history"]:
             if st.button("🗑️ Xóa lịch sử trò chuyện"):
                 st.session_state["chat_history"] = []
