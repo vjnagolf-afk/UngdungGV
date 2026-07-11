@@ -39,11 +39,12 @@ def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=
     
     # Định biên danh mục mã Model ID thương mại chính thức của Google
     # Cập nhật danh sách model để tương thích tốt nhất với thời điểm hiện tại
+    # Định biên danh mục mã Model ID dựa trên danh sách khả dụng thực tế của tài khoản
     model_pool = {
-        "3.1 Flash-Lite": ["gemini-2.5-flash", "gemini-1.5-flash"],
-        "3.5 Flash": ["gemini-2.5-flash", "gemini-1.5-flash"],
-        "3.1 Pro": ["gemini-1.5-pro", "gemini-2.5-flash"],
-        "Tư duy mở rộng": ["gemini-1.5-pro", "gemini-2.5-flash"]
+        "3.1 Flash-Lite": ["gemini-3.1-flash-lite", "gemini-2.5-flash-lite"],
+        "3.5 Flash": ["gemini-3.5-flash", "gemini-flash-latest"],
+        "3.1 Pro": ["gemini-3.1-pro-preview", "gemini-pro-latest"],
+        "Tư duy mở rộng": ["gemini-3.1-pro-preview", "gemini-2.5-pro"]
     }
     models_to_try = model_pool.get(preferred_model, ["gemini-2.5-flash", "gemini-1.5-pro"])
     
