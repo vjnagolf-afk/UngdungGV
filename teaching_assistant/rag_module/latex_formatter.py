@@ -2,8 +2,8 @@ import re
 
 def process_science_formulas(raw_text: str) -> str:
     """
-    Module trung gian chuẩn hóa toàn bộ chuỗi văn bản và công thức Toán - Lý - Hóa
-    trước khi chuyển tiếp đến giao diện Streamlit.
+    Module trung gian nâng cao: Quét sạch các lỗi xuống dòng vô lý trong biểu thức toán,
+    giúp các phân thức, dấu phép tính (=, -, +, \text) đứng liền mạch trên cùng một dòng.
     """
     if not raw_text:
         return ""
@@ -13,10 +13,24 @@ def process_science_formulas(raw_text: str) -> str:
     # 1. Khôi phục các ký tự xuống dòng và tab thô nếu có
     text = text.replace('\\n', '\n').replace('\\t', '\t')
 
-    # 2. ĐẶC TRỊ LỖI XUỐNG DÒNG: Xóa bỏ khoảng trắng và xuống dòng giữa dấu "=" và lệnh "\frac"
-    # Giúp công thức v = \frac{s}{t} nằm trên cùng một dòng, không bị đứt đoạn xuống dòng
-    text = re.sub(r'=\s*\n\s*\\frac', r'=\\frac', text)
-    text = re.sub(r'=\s*\n\s*\$*\\frac', r'=\\frac', text)
+    # 2. ĐẶC TRỊ LỖI BẺ DÒNG ĐẠI SỐ (Xóa xuống dòng xung quanh dấu phép tính và dấu bằng)
+    # Loại bỏ các khoảng trắng và dấu xuống dòng đứng trước hoặc sau các dấu toán học cốt lõi
+    # Xử lý cho dấu bằng (=)
+    text = re.sub(r'\s*\n\s*=\s*\n\s*', r' = ', text)
+    text = re.sub(r'=\s*\n\s*', r' = ', text)
+    text = re.sub(r'\s*\n\s*=', r' = ', text)
+    
+    # Xử lý cho dấu trừ (-) và dấu cộng (+) khi nằm giữa các phân số
+    text = re.sub(r'\s*\n\s*-\s*\n\s*', r' - ', text)
+    text = re.sub(r'-\s*\n\s*', r' - ', text)
+    text = re.sub(r'\s*\n\s*-', r' - ', text)
+    
+    text = re.sub(r'\s*\n\s*\+\s*\n\s*', r' + ', text)
+    text = re.sub(r'\+\s*\n\s*', r' + ', text)
+    text = re.sub(r'\s*\n\s*\+', r' + ', text)
+
+    # Khử xuống dòng giữa chữ nối và phân số (Ví dụ: "ký hiệu là \n \frac" -> "ký hiệu là \frac")
+    text = re.sub(r'(ký hiệu là|với phân thức đối của|cho phân thức)\s*\n\s*', r'\1 ', text)
 
     # 3. Tự động phát hiện và sửa lỗi OCR dính chữ (ví dụ: fracst -> \frac{s}{t})
     text = re.sub(r'\bfracst\b', r'\\frac{s}{t}', text)
@@ -26,7 +40,7 @@ def process_science_formulas(raw_text: str) -> str:
     text = re.sub(r'\\text\s*([^\{][^\$\n]*)', r'\\text{\1}', text)
 
     # 5. GIẢI PHÁP ĐẶC TRỊ LỖI HIỂN THỊ TRÊN STREAMLIT:
-    # Nhân đôi dấu gạch chéo ngược cho các lệnh toán học/khoa học phổ biến.
+    # Nhân đôi dấu gạch chéo ngược cho các lệnh toán học/khoa học phổ biến để không bị markdown nuốt mất.
     latex_keywords = [
         'frac', 'sqrt', 'alpha', 'beta', 'gamma', 'delta', 'pi', 'mu', 'rho', 'sigma', 'tau', 'omega',
         'times', 'div', 'pm', 'mp', 'le', 'ge', 'leq', 'geq', 'neq', 'approx', 'equiv', 'cdot',
