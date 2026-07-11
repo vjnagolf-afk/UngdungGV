@@ -23,12 +23,10 @@ def backup_to_googlesheet(data_dict):
         sheet.append_row([data_dict['timestamp'], data_dict['query'], data_dict['response']])
     except Exception as e:
         st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {e}")
-
 def get_embedding_model():
     api_key = st.secrets["GEMINI_API_KEY"]
-    # Thay đổi tên model tại đây
-    return GoogleGenerativeAIEmbeddings(model="gemini-embedding-001", google_api_key=api_key)
-
+    # Sử dụng chính xác tên mô hình embedding từ danh sách của thầy
+    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-2", google_api_key=api_key)
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
     if file_path.endswith('.pdf'):
