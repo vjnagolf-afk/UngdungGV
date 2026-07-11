@@ -7,31 +7,18 @@ def render_teaching_assistant_section():
     st.title("🌱 Hỗ trợ Giảng dạy")
     
     # Định nghĩa danh sách các tab
-    tabs = st.tabs([
-        "Hỏi-Đáp (RAG)", "Trò chơi", "Chấm bài", "Học liệu", 
-        "Mô phỏng", "Phân tích", "Ngân hàng đề", "Sinh Video", "Tương tác", "Cá nhân hóa"
-    ])
-# Kết nối tới từng module con
-    with tabs[0]: # Tab Hỏi-Đáp (RAG)
-        from teaching_assistant.rag_module.manager import render_rag
-        render_rag()
-        
-    with tabs[1]:
-        st.info("Module Trò chơi đang được phát triển...")
-    # ... Các tab khác tương tự
-# Dán tạm đoạn này vào cuối file main.py để kiểm tra
+    # Nút gỡ lỗi hệ thống (Đã cập nhật cho thư viện google-genai mới)
     if st.button("🛠️ Debug: Xem danh sách Model Gemini đang hỗ trợ"):
-        import google.generativeai as genai
+        from google import genai
         try:
-            # Lấy key từ secrets
-            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
-            st.warning("Các tên model chính xác bạn có thể dùng là:")
+            # Khởi tạo client lấy key trực tiếp từ secrets
+            client = genai.Client(api_key=st.secrets["GEMINI_API_KEY"])
+            st.warning("Các tên model chính xác tài khoản của thầy có thể dùng là:")
             
             models = []
-            for m in genai.list_models():
-                if 'generateContent' in m.supported_generation_methods:
-                    # Cắt bỏ chữ 'models/' ở đầu để lấy tên chuẩn cho LangChain
-                    models.append(m.name.replace("models/", ""))
+            # Duyệt qua danh sách các model được phép truy cập
+            for m in client.models.list():
+                models.append(m.name)
             
             st.json(models)
         except Exception as e:
