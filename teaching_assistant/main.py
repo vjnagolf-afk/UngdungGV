@@ -19,3 +19,20 @@ def render_teaching_assistant_section():
     with tabs[1]:
         st.info("Module Trò chơi đang được phát triển...")
     # ... Các tab khác tương tự
+# Dán tạm đoạn này vào cuối file main.py để kiểm tra
+    if st.button("🛠️ Debug: Xem danh sách Model Gemini đang hỗ trợ"):
+        import google.generativeai as genai
+        try:
+            # Lấy key từ secrets
+            genai.configure(api_key=st.secrets["GEMINI_API_KEY"])
+            st.warning("Các tên model chính xác bạn có thể dùng là:")
+            
+            models = []
+            for m in genai.list_models():
+                if 'generateContent' in m.supported_generation_methods:
+                    # Cắt bỏ chữ 'models/' ở đầu để lấy tên chuẩn cho LangChain
+                    models.append(m.name.replace("models/", ""))
+            
+            st.json(models)
+        except Exception as e:
+            st.error(f"Lỗi truy xuất: {e}")
