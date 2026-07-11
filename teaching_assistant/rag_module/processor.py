@@ -1,6 +1,5 @@
 import streamlit as st
-from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader
-# Bổ sung Loader chuyên dụng cho tệp ảnh
+# GOM TẤT CẢ LOADER VÀO MỘT DÒNG DUY NHẤT CHUẨN XÁC
 from langchain_community.document_loaders import PyPDFLoader, Docx2txtLoader, RapidOCRLoader
 from langchain_google_genai import GoogleGenerativeAIEmbeddings
 from langchain_text_splitters import RecursiveCharacterTextSplitter
