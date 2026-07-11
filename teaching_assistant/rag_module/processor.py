@@ -6,23 +6,20 @@ from langchain_community.vectorstores import Chroma
 import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
-
 def backup_to_googlesheet(data_dict):
     """
     Gửi thông tin giao tiếp về Google Sheet bằng tài khoản bảo mật từ Secrets
     """
     try:
-        # Lấy thông tin xác thực từ Streamlit Secrets
         google_creds = dict(st.secrets["gcp_service_account"])
-        
-        # Đăng nhập qua gspread
         client = gspread.service_account_from_dict(google_creds)
-        
-        # Mở bảng tính và ghi dữ liệu
         sheet = client.open("Data_Nhat_Ky_Giang_Day").sheet1
         sheet.append_row([data_dict['timestamp'], data_dict['query'], data_dict['response']])
     except Exception as e:
-        st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {e}")
+        error_msg = str(e)
+        # Nếu lỗi chứa "200" (tức là thao tác thành công nhưng bị hiểu nhầm), ta bỏ qua
+        if "200" not in error_msg:
+            st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {error_msg}")
 def get_embedding_model():
     api_key = st.secrets["GEMINI_API_KEY"]
     # Sử dụng chính xác tên mô hình embedding từ danh sách của thầy
