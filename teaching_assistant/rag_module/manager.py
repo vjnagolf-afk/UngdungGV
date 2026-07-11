@@ -100,24 +100,22 @@ def render_rag():
 
         if question := st.chat_input("Nhập câu hỏi của thầy/cô về tài liệu..."):
             
-            with st.chat_message("user"):
-                st.markdown(question)
-            st.session_state["chat_history"].append({"role": "user", "content": question})
-
-            with st.chat_message("assistant"):
+                        with st.chat_message("assistant"):
                 with st.spinner("🔍 AI đang truy xuất các đoạn ngữ cảnh liên quan..."):
+                    # Khởi tạo giá trị mặc định để tránh lỗi UnboundLocalError
+                    clean_response = "" 
+                    model_info = "AI"
+                    
                     try:
                         context = query_rag(st.session_state["vectorstore"], question)
                         
                         prompt = f"""Dựa vào ngữ cảnh tài liệu sau đây, hãy trả lời câu hỏi của giáo viên một cách chi tiết.
-
 YÊU CẦU ĐỊNH DẠNG:
 - LUÔN đính kèm chính xác nguồn trích dẫn hoặc số trang (nếu có).
 - BẮT BUỘC sử dụng cú pháp LaTeX chuẩn cho các công thức Khoa học Tự nhiên và đặt trong dấu $ (ví dụ: $v = \\frac{{s}}{{t}}$) hoặc $$ (nằm độc lập trên một dòng).
 - Tự động sửa lỗi OCR dính chữ (ví dụ: fracst phải viết lại thành công thức phân số chuẩn).
 
 Ngữ cảnh: {context}
-
 Câu hỏi: {question}"""
                         
                         # 1. Gọi dịch vụ AI
@@ -130,16 +128,17 @@ Câu hỏi: {question}"""
                         else:
                             raw_answer = ai_output
                             model_info = "AI"
+                            
                         # 3. Làm sạch mảng JSON của LangChain
-                            clean_response = extract_text_safely(raw_answer)
-        
-                        # 4. --- GIẢI PHÁP SỬA LỖI ĐỊNH DẠNG ---
-        # Giải mã các ký tự xuống dòng và tab thô nếu có (không nhân đôi dấu gạch chéo)
-                            clean_response = clean_response.replace('\\n', '\n').replace('\\t', '\t')
-        
-        # 5. Hiển thị kết quả trực tiếp (Streamlit hỗ trợ gốc dấu \ của LaTeX trong Markdown)
+                        clean_response = extract_text_safely(raw_answer)
+                        
+                        # 4. Giải mã các ký tự xuống dòng và tab thô nếu có
+                        clean_response = clean_response.replace('\\n', '\n').replace('\\t', '\t')
+                        
+                        # 5. Hiển thị kết quả trực tiếp
                         st.markdown(clean_response)
-                        st.caption(f"🤖 Sinh bởi: {model_info}") 
+                        st.caption(f"🤖 Sinh bởi: {model_info}")
+                        
                         # Lưu lịch sử
                         st.session_state["chat_history"].append({
                             "role": "assistant", 
@@ -147,16 +146,19 @@ Câu hỏi: {question}"""
                             "model_info": model_info
                         })
                         
-                        # 6. Sao lưu tự động
-                        backup_to_googlesheet({
-                            'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
-                            'query': question,
-                            'response': clean_response
-                        })
-                        st.caption("✅ Đã tự động đồng bộ cuộc hội thoại này vào Nhật ký giảng dạy trên Google Sheet!")
+                        # 6. Sao lưu tự động qua biến an toàn đã lấy từ st.secrets ở tầng trên
+                        if "gcp_service_account" in st.secrets:
+                            creds_data = dict(st.secrets["gcp_service_account"])
+                            backup_to_googlesheet({
+                                'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
+                                'query': question,
+                                'response': clean_response
+                            }, google_creds=creds_data)
+                            st.caption(" Đã tự động đồng bộ cuộc hội thoại này vào Nhật ký giảng dạy trên Google Sheet!")
                         
                     except Exception as e:
-                        st.error(f"💥 Đã xảy ra lỗi trong quá trình xử lý câu hỏi: {str(e)}")
+                        st.error(f"❌ Đã xảy ra lỗi trong quá trình xử lý câu hỏi: {str(e)}")
+
 
         if st.session_state["chat_history"]:
             if st.button("🗑️ Xóa lịch sử trò chuyện"):
