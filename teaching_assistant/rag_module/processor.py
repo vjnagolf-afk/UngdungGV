@@ -41,9 +41,18 @@ def process_and_vectorize(file_path):
         
     elif ext == ".docx":
         # Chỉ nạp Docx2txtLoader khi người dùng tải lên file Word
-        from langchain_community.document_loaders import Docx2txtLoader
-        loader = Docx2txtLoader(file_path)
-        documents = loader.load()
+        from rapidocr_onnxruntime import RapidOCR
+        from langchain_core.documents import Document
+
+        ocr = RapidOCR()
+
+result, _ = ocr(file_path)
+
+text = ""
+if result:
+    text = "\n".join([line[1] for line in result])
+
+documents = [Document(page_content=text)]
         
     elif ext in [".png", ".jpg", ".jpeg", ".tiff", ".bmp"]:
         # Chỉ nạp bộ OCR khi người dùng tải lên ảnh
