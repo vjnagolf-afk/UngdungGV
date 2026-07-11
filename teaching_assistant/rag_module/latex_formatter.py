@@ -15,7 +15,7 @@ def process_science_formulas(text: str) -> str:
     clean_text = clean_text.replace('\\\\n', '\n').replace('\\\\t', '\t')
     
     # 3. Bộ từ điển sửa lỗi OCR tự động cho các đại lượng Khoa học Tự nhiên
-    # (Thầy có thể liên tục bổ sung thêm các quy tắc vào đây trong tương lai)
+    # (Thầy có thể thêm các quy tắc mới vào đây bất cứ lúc nào)
     ocr_corrections = {
         "fracst": r"\\frac{s}{t}",
         "frac ": r"\\frac",
