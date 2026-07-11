@@ -27,6 +27,7 @@ from ke_hoach_ca_nhan_manager import render_personal_plan
 from stem_manager import render_stem_section
 from chu_nhiem_manager import render_chu_nhiem_section 
 from hskt_plan import render_special_ed_section
+from teaching_assistant.main import render_teaching_assistant_section
 st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
 
 # --- THUẬT TOÁN WHITELIST IP: KHÓA CỨNG ĐỊA CHỈ IP CHÍNH CHỦ DỰ ÁN ---
