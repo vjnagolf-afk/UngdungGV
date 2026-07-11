@@ -1,57 +1,12 @@
-# app.py - Tích hợp bộ quét IP Mạng thông minh khóa cứng quyền Admin vĩnh viễn cho mọi Tab mới
+# =====================================================================
+# ĐOẠN 1: KHAI BÁO THƯ VIỆN & THUẬT TOÁN QUÉT IP BẢO MẬT ADMIN
+# =====================================================================
 import streamlit as st
 import pandas as pd
 import sqlite3
 import os
 import sys
-import urllib.request# =====================================================================
-# ĐOẠN SỬA ĐỔI TRONG APP.PY - FIX LỖI HIỂN THỊ JSON CHO THIẾT KẾ ĐỀ
-# =====================================================================
-    if menu == "1. Thiết kế KHBD": 
-        render_khbd_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
-        
-    elif menu == "2. Thiết kế Đề KT": 
-        from exam_designer import render_exam_designer_section
-        from ai_service import run_ai_prompt_safe
-        
-        # Tạo một hàm bọc an toàn để xử lý làm sạch mọi định dạng JSON trả về từ AI
-        def safe_ai_adapter(prompt, model_choice):
-            # Gọi hàm sinh nội dung gốc từ hệ thống
-            raw_res = run_ai_prompt_safe(prompt, model_choice, is_admin_owner)
-            
-            # Khởi tạo giá trị chuỗi văn bản mặc định
-            clean_text = ""
-            
-            # Trường hợp 1: Kết quả là danh sách chứa các block text (Lỗi bạn đang gặp phải)
-            if isinstance(raw_res, list) and len(raw_res) > 0:
-                first_item = raw_res[0]
-                if isinstance(first_item, dict) and "text" in first_item:
-                    clean_text = first_item["text"]
-                elif isinstance(first_item, dict) and "get" in dir(first_item) and first_item.get("text"):
-                    clean_text = first_item.get("text")
-                else:
-                    clean_text = str(first_item)
-            
-            # Trường hợp 2: Kết quả là một từ điển trực tiếp
-            elif isinstance(raw_res, dict):
-                clean_text = raw_res.get("text", str(raw_res))
-            
-            # Trường hợp 3: Đã là chuỗi văn bản chuẩn
-            else:
-                clean_text = str(raw_res)
-            
-            # Khử toàn bộ ký tự thoát chuỗi '\n' và '\t' thô nếu có để đưa về định dạng văn bản markdown sạch
-            clean_text = clean_text.replace("\\n", "\n").replace("\\t", "\t")
-            
-            # Trả về bộ tuple (Nội dung sạch, Tên mô hình hiển thị) đúng cấu trúc thiết kế đề yêu cầu
-            return clean_text, model_choice
-
-        # Truyền hàm bọc an toàn đã xử lý lỗi JSON vào giao diện
-        render_exam_designer_section(safe_ai_adapter)
-
-    elif menu == "3. Đánh giá HS": 
-# =====================================================================
-
+import urllib.request
 
 # THUẬT TOÁN ĐƯỜNG DẪN: Ép hệ thống tìm module trong cùng thư mục chạy ứng dụng
 current_dir = os.path.dirname(os.path.abspath(__file__))
@@ -72,39 +27,41 @@ from stem_manager import render_stem_section
 from chu_nhiem_manager import render_chu_nhiem_section 
 from hskt_plan import render_special_ed_section
 from teaching_assistant.main import render_teaching_assistant_section
+
+# Thiết kế cấu hình trang ở chế độ hiển thị rộng (Wide)
 st.set_page_config(page_title="HỆ SINH THÁI SỐ GIÁO VIÊN", layout="wide")
+
 # --- THUẬT TOÁN WHITELIST IP: KHÓA CỨNG ĐỊA CHỈ IP CHÍNH CHỦ DỰ ÁN ---
 def get_current_public_ip():
     """Tự động quét địa chỉ IP công cộng của thiết bị đang kết nối mạng"""
     try:
         # Gọi dịch vụ kiểm tra IP độc lập của Amazon
-        return urllib.request.urlopen('https://amazonaws.com').read().decode('utf-8').strip()
+        return urllib.request.urlopen('https://amazonaws.com', timeout=5).read().decode('utf-8').strip()
     except:
         return "127.0.0.1"
 
-# 🌟 BƯỚC THIẾT LẬP: Thầy lấy địa chỉ IP mạng máy tính của thầy dán vào danh sách dưới đây
-# (Mẹo lấy IP: Thầy mở tab mới gõ "my ip" lên Google, copy dãy số dạng 113.161... dán đè vào đây)
+# Danh sách địa chỉ IP mạng máy tính được cấp quyền Admin
 ADMIN_IP_WHITELIST = [
-    "113.161.220.105",  # Ví dụ địa chỉ IP mạng Internet trường THCS Nguyễn Chí Thanh
-    "14.161.12.34"      # Thầy có thể thêm nhiều IP khác nhau (Ví dụ IP mạng Wifi nhà riêng của thầy)
+    "113.161.220.105",  # Địa chỉ IP mạng Internet trường THCS Nguyễn Chí Thanh
+    "14.161.12.34"      # Thêm nhiều IP khác nhau (Ví dụ IP mạng Wifi nhà riêng)
 ]
 current_device_ip = get_current_public_ip()
 
-# 🚀 TỰ ĐỘNG KHÓA CỨNG QUYỀN ADMIN: Mở tab mới hay F5 chỉ cần trùng IP mạng là tự động nhận diện Admin
+# TỰ ĐỘNG KHÓA CỨNG QUYỀN ADMIN: Trùng IP mạng là tự động nhận diện Admin
 if current_device_ip in ADMIN_IP_WHITELIST:
     is_admin_owner = True
 else:
-    # Dự phòng: Nếu thầy đi công tác mạng khác, thầy vẫn gõ mật mã "123456" vào ô để mở Admin tạm thời
-    MAT_MA_ADMIN_CỐ_ĐỊNH = "123456"
+    # Dự phòng: Nếu đi công tác mạng khác, gõ mật mã "123456" vào tham số URL để mở Admin tạm thời
+    MAT_MA_ADMIN_CODINH = "123456"
     if "current_entered_password" not in st.session_state:
         st.session_state["current_entered_password"] = ""
     url_params = st.query_params
-    if url_params.get("admin") == MAT_MA_ADMIN_CỐ_ĐỊNH:
-        st.session_state["current_entered_password"] = MAT_MA_ADMIN_CỐ_ĐỊNH
+    if url_params.get("admin") == MAT_MA_ADMIN_CODINH:
+        st.session_state["current_entered_password"] = MAT_MA_ADMIN_CODINH
         
-    is_admin_owner = (st.session_state["current_entered_password"] == MAT_MA_ADMIN_CỐ_ĐỊNH)
+    is_admin_owner = (st.session_state["current_entered_password"] == MAT_MA_ADMIN_CODINH)
 
-# 🚀 BỘ VÁ CSS: Khử padding/margin thừa giữa các phần tử trong Sidebar
+# BỘ VÁ CSS: Khử padding/margin thừa giữa các phần tử trong Sidebar
 st.markdown("""
     <style>
         [data-testid="stSidebarUserContent"] {
@@ -127,10 +84,9 @@ st.markdown("""
 st.markdown("<h1 style='text-align: center; color: darkred; font-weight: bold;'>🔰 HỆ SINH THÁI SỐ - HỖ TRỢ GIÁO VIÊN</h1>", unsafe_allow_html=True)
 st.markdown("<p style='text-align: center; color: #0056b3; font-weight: bold; font-size: 16px;'>Sản phẩm tham gia Cuộc thi AI for Life năm 2026, trường THCS Nguyễn Chí Thanh - Phường Tân Lập tỉnh Đắk Lắk</p>", unsafe_allow_html=True)
 st.markdown("---")
-
-# ==================================================================================
-# --- THANH ĐIỀU HƯỚNG TỔNG TẠI SIDEBAR (VỊ TRÍ 1 - TRÊN CÙNG) ---
-# ==================================================================================
+# =====================================================================
+# ĐOẠN 2: ĐIỀU HƯỚNG SIDEBAR & PHÂN HỆ TRỢ LÝ GIẢNG DẠY (GIÁO VIÊN)
+# =====================================================================
 st.sidebar.markdown("### MENU HỆ THỐNG")
 st.sidebar.caption("CHỌN PHÂN HỆ TÁC NGHIỆP")
 
@@ -141,9 +97,6 @@ phan_he = st.sidebar.radio(
     key="app_main_sidebar_navigation_root_key_2026_v9"
 )
 st.sidebar.markdown("---")
-# ==================================================================================
-# --- KHỐI ĐIỀU HƯỚNG TÁC NGHIỆP CHI TIẾT (3 PHÂN HỆ ĐỘC LẬP) ---
-# ==================================================================================
 
 # 1. Phân hệ Trợ lý Giảng dạy (Giáo viên)
 if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
@@ -152,12 +105,31 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
     
     if menu == "1. Thiết kế KHBD": 
         render_khbd_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
+        
     elif menu == "2. Thiết kế Đề KT": 
-        # Thêm dòng này để kiểm tra xem nó có vào được hàm không
-        # st.write("Đang tải giao diện thiết kế đề...") 
-        from exam_designer import render_exam_designer_section
-        from ai_service import run_ai_prompt_safe
-        render_exam_designer_section(lambda p, m: run_ai_prompt_safe(p, m, is_admin_owner))
+        # Hàm bọc an toàn để bóc tách chuỗi văn bản sạch từ cấu trúc JSON phức tạp của AI
+        def safe_ai_adapter(prompt, model_choice):
+            raw_res = run_ai_prompt_safe(prompt, model_choice, is_admin_owner)
+            clean_text = ""
+            
+            # Xử lý nếu AI trả về dạng danh sách chứa block text (Lỗi giao diện thô)
+            if isinstance(raw_res, list) and len(raw_res) > 0:
+                first_item = raw_res[0]
+                if isinstance(first_item, dict) and "text" in first_item:
+                    clean_text = first_item["text"]
+                else:
+                    clean_text = str(first_item)
+            elif isinstance(raw_res, dict):
+                clean_text = raw_res.get("text", str(raw_res))
+            else:
+                clean_text = str(raw_res)
+                
+            clean_text = clean_text.replace("\\n", "\n").replace("\\t", "\t")
+            return clean_text, model_choice
+
+        # Khởi chạy giao diện thiết kế đề thi với adapter làm sạch dữ liệu
+        render_exam_designer_section(safe_ai_adapter)
+        
     elif menu == "3. Đánh giá HS": 
         render_assessment_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "4. Quản lý điểm (SMAS)": 
@@ -170,8 +142,10 @@ if phan_he == "Trợ lý Giảng dạy (Giáo viên)":
         render_chu_nhiem_section(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "8. Kế hoạch hỗ trợ học sinh khuyết tật":
         render_special_ed_section(lambda p: run_ai_prompt_safe(p))
-
-# 2. Phân hệ Hỗ trợ giảng dạy (MỚI - ĐỘC LẬP)
+# =====================================================================
+# ĐOẠN 3: PHÂN HỆ HỖ TRỢ GIẢNG DẠY & TRỢ LÝ QUẢN LÝ TỔ CHUYÊN MÔN
+# =====================================================================
+# 2. Phân hệ Hỗ trợ giảng dạy
 elif phan_he == "Hỗ trợ giảng dạy":
     render_teaching_assistant_section()
 
@@ -187,15 +161,19 @@ elif phan_he == "Trợ lý Quản lý (Tổ chuyên môn)":
     elif menu == "3. Kế hoạch cá nhân": 
         render_personal_plan(lambda p: run_ai_prompt_safe(p, is_admin_owner=is_admin_owner))
     elif menu == "4. Thống kê số liệu": 
-        # ... giữ nguyên phần logic thống kê cũ của bạn ở đây ...
         st.header("📊 THỐNG KÊ SỐ LIỆU TỔ CHUYÊN MÔN")
-        # [Chèn phần code xử lý database/dataframe của tổ chuyên môn vào đây]
         
         df_tv = pd.DataFrame()
         if os.path.exists(DB_PATH):
             try:
                 conn = sqlite3.connect(DB_PATH)
-                query = "SELECT m.fullname as [Họ và tên], m.main_subject as [Phân môn chính], a.total_periods as [Số tiết/Tuần] FROM org_members m LEFT JOIN org_assignments a ON m.fullname = a.fullname"
+                query = """
+                    SELECT m.fullname as [Họ và tên], 
+                           m.main_subject as [Phân môn chính], 
+                           a.total_periods as [Số tiết/Tuần] 
+                    FROM org_members m 
+                    LEFT JOIN org_assignments a ON m.fullname = a.fullname
+                """
                 df_tv = pd.read_sql_query(query, conn)
                 conn.close()
             except Exception as e:
@@ -205,50 +183,8 @@ elif phan_he == "Trợ lý Quản lý (Tổ chuyên môn)":
 
         if not thuc_te_co_du_lieu:
             st.warning("ℹ️ Hiện tại chưa có dữ liệu giáo viên nào được nhập từ phân hệ '1. Quản lý & Phân công chuyên môn'.")
-            if st.button("💡 Nạp nhanh dữ liệu mẫu để thử nghiệm biểu đồ", type="primary", use_container_width=True):
-                try:
-                    inject_demo_data()
-                    st.success("🎉 Đã nạp dữ liệu thử nghiệm trực tiếp vào SQLite!")
-                    st.rerun()
-                except Exception as e:
-                    st.error(f"❌ Không thể nạp dữ liệu mẫu: {str(e)}")
+            if st.button("💡 Nạp dữ liệu nhanh"):
+                inject_demo_data()
+                st.rerun()
         else:
-            st.subheader("📋 Danh sách phân công hiện tại:")
             st.dataframe(df_tv, use_container_width=True)
-
-st.sidebar.markdown("---")
-
-# ==================================================================================
-# --- KHỐI HIỂN THỊ TRẠNG THÁI TÀI KHOẢN (VỊ TRÍ 3 - DƯỚI CÙNG SIDEBAR) ---
-# ==================================================================================
-st.sidebar.markdown("### 🔑 TRẠNG THÁI TÀI KHOẢN")
-
-if current_device_ip in ADMIN_IP_WHITELIST:
-    st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-    st.sidebar.caption(f"Nhận diện tự động qua IP: `{current_device_ip}`. Đặc quyền chạy trực tiếp bằng Key hệ thống vĩnh viễn.")
-    st.session_state["gv_api_key_input"] = ""
-else:
-    # Dự phòng nếu thầy ở vùng mạng khác thì hiện ô nhập mật mã/Key như cũ
-    mat_ma_nhap = st.sidebar.text_input("Mật mã định danh Admin (Nếu có):", type="password", key="admin_password_input_field_v2")
-    if mat_ma_nhap:
-        st.session_state["current_entered_password"] = mat_ma_nhap
-
-    if st.session_state.get("current_entered_password") == "123456":
-        st.sidebar.success("👑 Thiết bị: Chủ dự án (Admin)")
-        st.sidebar.caption("Kích hoạt đặc quyền qua mật mã thành công.")
-        st.session_state["gv_api_key_input"] = ""
-    else:
-        st.sidebar.warning("🔒 Thiết bị: Thành viên/Giáo viên")
-        st.sidebar.caption("Vui lòng dán API Key cá nhân từ Google AI Studio để mở khóa phân hệ.")
-        st.sidebar.text_input("Nhập API Key Gemini của thầy/cô:", type="password", placeholder="AIzaSy...", key="gv_api_key_input")
-        if st.session_state["gv_api_key_input"]:
-            st.sidebar.success("🟢 Đã nhận diện Key cá nhân.")
-
-# --- KHỐI THÔNG TIN TÁC GIẢ & ĐƠN VỊ ---
-st.sidebar.markdown("<br>", unsafe_allow_html=True)
-st.sidebar.markdown("""
-    <div style='text-align: center; border-top: 1px solid #ddd; padding-top: 12px; margin-top: 5px;'>
-        <p style='color: #991B1B; font-weight: bold; margin-bottom: 2px; font-size: 14px;'>Tác giả: Lê Hồng Dưỡng</p>
-        <p style='color: #1E3A8A; font-weight: bold; margin-bottom: 0px; font-size: 14px;'>Đơn vị: THCS Nguyễn Chí Thanh</p>
-    </div>
-""", unsafe_allow_html=True)
