@@ -2,46 +2,40 @@ import streamlit as st
 import sys
 import os
 
-# Thêm thư mục gốc của dự án vào đường dẫn tìm kiếm của Python
-sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../..')))
+# Đường dẫn gốc
+sys.path.append(os.path.abspath(os.path.dirname(__file__)))
 
 def render_teaching_assistant_section():
     st.title("🌱 Hỗ trợ Giảng dạy")
     
-    # Định nghĩa danh sách các tab
+    # Định nghĩa các tab chức năng
     tabs = st.tabs([
-        "Hỏi-Đáp (RAG)", "Trò chơi", "Chấm bài", "Học liệu", 
-        "Mô phỏng", "Phân tích", "Ngân hàng đề", "Sinh Video", "Tương tác", "Cá nhân hóa"
+        "Hỏi-Đáp (RAG)", 
+        "Ra đề kiểm tra", 
+        "Xây dựng KHBD", 
+        "Học liệu", 
+        "Phân tích"
     ])
     
-    # Kết nối tới từng module con
-    with tabs[0]: # Tab Hỏi-Đáp (RAG)
+    # Liên kết module RAG (đã hoàn thiện)
+    with tabs[0]:
         from teaching_assistant.rag_module.manager import render_rag
         render_rag()
         
+    # Liên kết module Ra đề (Thầy cần tạo file exam_module/manager.py)
     with tabs[1]:
-        st.info("Module Trò chơi đang được phát triển...")
-        
+        try:
+            from teaching_assistant.exam_module.manager import render_exam
+            render_exam()
+        except ImportError:
+            st.warning("Module Ra đề đang được thiết lập. Vui lòng kiểm tra file `exam_module/manager.py`.")
+            
+    # Liên kết module KHBD (Thầy cần tạo file lesson_plan_module/manager.py)
     with tabs[2]:
-        st.info("Module Chấm bài đang được phát triển...")
-        
-    with tabs[3]:
-        st.info("Module Học liệu đang được phát triển...")
-        
-    with tabs[4]:
-        st.info("Module Mô phỏng đang được phát triển...")
-        
-    with tabs[5]:
-        st.info("Module Phân tích đang được phát triển...")
-        
-    with tabs[6]:
-        st.info("Module Ngân hàng đề đang được phát triển...")
-        
-    with tabs[7]:
-        st.info("Module Sinh Video đang được phát triển...")
-        
-    with tabs[8]:
-        st.info("Module Tương tác đang được phát triển...")
-        
-    with tabs[9]:
-        st.info("Module Cá nhân hóa đang được phát triển...")
+        try:
+            from teaching_assistant.lesson_plan_module.manager import render_lesson_plan
+            render_lesson_plan()
+        except ImportError:
+            st.warning("Module KHBD đang được thiết lập. Vui lòng kiểm tra file `lesson_plan_module/manager.py`.")
+
+    # ... các tab khác ...
