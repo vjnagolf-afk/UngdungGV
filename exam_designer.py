@@ -1,4 +1,14 @@
 # exam_designer.py - BẢN HOÀN THIỆN TÍNH NĂNG LƯU/XÓA FILE & QUẢN LÝ THƯ MỤC
+import sys
+import os
+import streamlit as st
+sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), 'teaching_assistant')))
+
+# Import bộ lọc chuẩn hóa và cổng xuất Word
+from rag_module.latex_formatter import process_science_formulas
+from rag_module.document_export import export_to_docx
+from ai_service import run_ai_prompt_safe
+
 import streamlit as st
 import gspread
 from document_processor import read_uploaded_docx, read_uploaded_pdf, export_to_docx_vietnam_standard
