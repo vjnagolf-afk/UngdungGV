@@ -1,5 +1,5 @@
 from teaching_assistant.rag_module.processor import process_and_vectorize, query_rag
-
+from .processor import process_and_vectorize, query_rag, backup_to_googlesheet
 def render_rag():
     uploaded_file = st.file_uploader("Tải lên tài liệu:", type=["pdf", "docx"])
     
