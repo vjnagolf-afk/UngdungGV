@@ -25,9 +25,9 @@ def backup_to_googlesheet(data_dict):
         st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {e}")
 
 def get_embedding_model():
-    # Đã xóa dấu ngoặc kép gây lỗi ở đây
     api_key = st.secrets["GEMINI_API_KEY"]
-    return GoogleGenerativeAIEmbeddings(model="models/embedding-001", google_api_key=api_key)
+    # Thay đổi tên model tại đây
+    return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
 
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
