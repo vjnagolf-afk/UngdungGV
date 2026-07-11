@@ -27,7 +27,9 @@ def get_embedding_model():
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
     if file_path.endswith('.pdf'):
-        loader = PyPDFLoader(file_path)
+    # Bổ sung chế độ extract_images để tự động chạy OCR nếu phát hiện trang quét bằng ảnh
+    loader = PyPDFLoader(file_path, extract_images=True)
+
     elif file_path.endswith('.docx'):
         loader = Docx2txtLoader(file_path)
     else:
