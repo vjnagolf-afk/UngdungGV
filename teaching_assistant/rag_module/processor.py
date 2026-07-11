@@ -7,32 +7,22 @@ import os
 import gspread
 from oauth2client.service_account import ServiceAccountCredentials
 
-def backup_to_googlesheet(data_dict, google_creds):
+def backup_to_googlesheet(data_dict):
     """
-    Gửi thông tin giao tiếp về Google Sheet bằng tài khoản dịch vụ 
-    được truyền trực tiếp từ tầng giao diện chính.
+    Gửi thông tin giao tiếp về Google Sheet bằng tài khoản bảo mật từ Secrets
     """
     try:
-        # Đăng nhập trực tiếp thông qua Dictionary được bàn giao
-        client = gspread.service_account_from_dict(google_creds)
-
-        # Mở bảng tính và ghi dữ liệu nhật ký
-        sheet = client.open("Data_Nhat_Ky_Giang_Day").sheet1
-        sheet.append_row([data_dict['timestamp'], data_dict['query'], data_dict['response']])
-    except Exception as e:
-        st.error(f"Lỗi khi sao lưu dữ liệu lên hệ thống Cloud: {e}")
-    try:
-        # Cách kết nối hiện đại, an toàn và tối ưu nhất cho Streamlit Cloud Secrets
+        # Lấy thông tin xác thực từ Streamlit Secrets
         google_creds = dict(st.secrets["gcp_service_account"])
         
-        # Đồng bộ tài khoản và đăng nhập thẳng qua gspread
+        # Đăng nhập qua gspread
         client = gspread.service_account_from_dict(google_creds)
         
         # Mở bảng tính và ghi dữ liệu
         sheet = client.open("Data_Nhat_Ky_Giang_Day").sheet1
         sheet.append_row([data_dict['timestamp'], data_dict['query'], data_dict['response']])
     except Exception as e:
-        st.error(f"Lỗi khi sao lưu dữ liệu lên hệ thống Cloud: {e}")
+        st.error(f"Lỗi khi sao lưu dữ liệu lên Google Sheets: {e}")
 
 def get_embedding_model():
     """
