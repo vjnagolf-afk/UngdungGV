@@ -24,12 +24,11 @@ def backup_to_googlesheet(data_dict):
     except Exception as e:
         st.error(f"Lỗi khi sao lưu dữ liệu lên hệ thống Cloud: {e}")
 
-# =========================================================================
-# CẬP NHẬT: Thay đổi mô hình Embedding mới để sửa lỗi 404 NOT_FOUND
-# =========================================================================
+# Cấu hình Embedding model (Sử dụng Google Gemini Embedding phiên bản mới ổn định)
 def get_embedding_model():
-    # Sử dụng text-embedding-04 thay cho model cũ đã bị ngừng hỗ trợ
-    return GoogleGenerativeAIEmbeddings(model="models/text-embedding-04")
+    # Thay thế text-embedding-04 bằng gemini-embedding-001 để tương thích hoàn toàn với API v1beta
+    return GoogleGenerativeAIEmbeddings(model="models/gemini-embedding-001")
+)
 
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
