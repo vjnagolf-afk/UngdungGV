@@ -1,7 +1,6 @@
-# ai_service.py - Bản vá phòng vệ triệt tiêu lỗi KeyError trích xuất API Key từ Secrets
 import streamlit as st
-from google import genai
-from google.genai import errors
+from langchain_google_genai import ChatGoogleGenerativeAI
+from langchain_core.messages import HumanMessage
 
 def get_system_api_key():
     """Lấy API Key tổng dự phòng của hệ thống an toàn, chống lỗi KeyError"""
@@ -20,9 +19,9 @@ def get_system_api_key():
 
 def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=True):
     """
-    Trung tâm điều phối gọi API phân luồng bảo mật.
-    - Nếu là máy của Admin (nhập đúng mật mã): Chạy bằng Key hệ thống.
-    - Nếu là máy giáo viên khác: Ép dùng Key cá nhân dán ở Sidebar giao diện.
+    Trung tâm điều phối gọi API phân luồng bảo mật tích hợp LangChain.
+    - Nếu là máy của Admin: Chạy bằng Key hệ thống.
+    - Nếu là máy giáo viên khác: Ép dùng Key cá nhân.
     """
     if is_admin_owner:
         api_key_to_use = get_system_api_key()
@@ -39,43 +38,50 @@ def run_ai_prompt_safe(prompt_text, preferred_model="3.5 Flash", is_admin_owner=
         return "⚠️ Hệ thống chưa được cấu hình API Key. Vui lòng liên hệ Admin hoặc tự cung cấp mã Key cá nhân ở mục Trạng thái tài khoản để sử dụng!", "error"
     
     # Định biên danh mục mã Model ID thương mại chính thức của Google
+    # Cập nhật danh sách model để tương thích tốt nhất với thời điểm hiện tại
     model_pool = {
-        "3.1 Flash-Lite": ["gemini-2.5-flash", "gemini-1.5-pro"],
-        "3.5 Flash": ["gemini-2.5-flash", "gemini-1.5-pro"],
+        "3.1 Flash-Lite": ["gemini-2.5-flash", "gemini-1.5-flash"],
+        "3.5 Flash": ["gemini-2.5-flash", "gemini-1.5-flash"],
         "3.1 Pro": ["gemini-1.5-pro", "gemini-2.5-flash"],
         "Tư duy mở rộng": ["gemini-1.5-pro", "gemini-2.5-flash"]
     }
     models_to_try = model_pool.get(preferred_model, ["gemini-2.5-flash", "gemini-1.5-pro"])
     
     last_error_message = "Không có thông tin lỗi cụ thể."
-    client = genai.Client(api_key=api_key_to_use)
     
+    # Vòng lặp quét lỗi (Fallback Loop) - Tự động đổi model nếu model chính gặp sự cố
     for model_name in models_to_try:
         try:
-            config_params = {}
-            if preferred_model == "Tư duy mở rộng" and "pro" in model_name:
-                config_params["thinking_config"] = {"thinking_budget": 2048}
-            
-            response = client.models.generate_content(
+            # 1. Khởi tạo LLM bằng LangChain (thay thế cho genai.Client cũ)
+            llm = ChatGoogleGenerativeAI(
                 model=model_name,
-                contents=prompt_text,
-                config=config_params if config_params else None
+                temperature=0.3,
+                google_api_key=api_key_to_use
             )
             
-            if response and response.text:
-                return response.text, f"{model_name} ({nguon_key})"
+            # 2. Đóng gói câu hỏi vào định dạng Message của LangChain
+            messages = [HumanMessage(content=prompt_text)]
+            
+            # 3. Gọi mô hình thực thi
+            response = llm.invoke(messages)
+            
+            if response and response.content:
+                return response.content, f"{model_name} ({nguon_key})"
             else:
                 continue
                 
-        except errors.APIError as error:  
-            last_error_message = f"Mô hình {model_name} báo lỗi API: {str(error)}"
-            if "429" in str(error):
-                st.toast("⏳ Mô hình đạt giới hạn hạn mức câu hỏi của ngày. Hệ thống đang lùi dòng máy...", icon="⚠️")
-            elif "503" in str(error):
-                st.toast("⏳ Máy chủ Google đang bận cục bộ. Hệ thống tự động chuyển dòng máy dự phòng...", icon="🔄")
-            continue  
         except Exception as e:
-            last_error_message = f"Sự cố đường truyền: {str(e)}"
-            continue
+            error_str = str(e)
+            last_error_message = f"Mô hình {model_name} báo lỗi API: {error_str}"
+            
+            # Phân tích thông báo lỗi để hiển thị Toast cảnh báo cho giáo viên
+            if "429" in error_str or "quota" in error_str.lower():
+                st.toast(f"⏳ {model_name} đạt giới hạn hạn mức. Đang lùi dòng máy...", icon="⚠️")
+            elif "503" in error_str or "unavailable" in error_str.lower():
+                st.toast(f"⏳ Máy chủ Google đang bận cục bộ. Tự động chuyển dòng dự phòng...", icon="🔄")
+            elif "404" in error_str or "not found" in error_str.lower():
+                st.toast(f"⚠️ {model_name} không khả dụng. Đang cập nhật kênh khác...", icon="🔄")
+                
+            continue # Tiếp tục vòng lặp với mô hình dự phòng tiếp theo
             
     return f"❌ Lỗi: Không thể phản hồi từ AI. Ghi nhận lỗi cuối cùng: {last_error_message}", "error"
