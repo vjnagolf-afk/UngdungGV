@@ -27,7 +27,7 @@ def backup_to_googlesheet(data_dict):
 def get_embedding_model():
     api_key = st.secrets["GEMINI_API_KEY"]
     # Thay đổi tên model tại đây
-    return GoogleGenerativeAIEmbeddings(model="models/text-embedding-004", google_api_key=api_key)
+    return GoogleGenerativeAIEmbeddings(model="gemini-embedding-001", google_api_key=api_key)
 
 def process_and_vectorize(file_path):
     # 1. Đọc tài liệu
