@@ -4,31 +4,27 @@ import ast
 import streamlit as st
 from datetime import datetime
 
-# 1. Ép đường dẫn
+# 1. Ép đường dẫn để import các file ở thư mục gốc
 sys.path.append(os.path.abspath(os.path.join(os.path.dirname(__file__), '../../')))
 
+# 2. Import các module cần thiết
 from ai_service import run_ai_prompt_safe 
 from .processor import process_and_vectorize, query_rag, backup_to_googlesheet
 
 def extract_text_safely(raw_output):
     """
-    Hàm lột vỏ dữ liệu chuyên dụng: Cắt bỏ chữ ký bảo mật Base64 của LangChain/Gemini 
-    và trích xuất văn bản sạch một cách an toàn.
+    Hàm lột vỏ dữ liệu: Cắt bỏ chữ ký bảo mật Base64 của LangChain
+    và trích xuất văn bản sạch.
     """
     text_str = str(raw_output).strip()
-    
-    # Kỹ thuật cắt chuỗi thủ công để vượt qua các lỗi mã hóa phức tạp
     marker_start = "'text': '"
     marker_end = "', 'extras': {"
     
     if marker_start in text_str and marker_end in text_str:
         start_idx = text_str.find(marker_start) + len(marker_start)
         end_idx = text_str.rfind(marker_end)
-        extracted_text = text_str[start_idx:end_idx]
-        # Khôi phục lại các dấu xuống dòng bị chuỗi hóa
-        return extracted_text.replace('\\n', '\n').replace('\\t', '\t')
+        return text_str[start_idx:end_idx]
         
-    # Dự phòng an toàn cho các định dạng khác
     if text_str.startswith("[{"):
         try:
             parsed = ast.literal_eval(text_str)
@@ -43,6 +39,7 @@ def render_rag():
     st.subheader("🤖 AI Hỏi - Đáp Theo Tài Liệu (RAG)")
     st.write("Hệ thống tự động phân tách tài liệu, nhúng vector và truy xuất dữ liệu có kèm trích dẫn nguồn.")
 
+    # Khởi tạo lịch sử trò chuyện
     if "chat_history" not in st.session_state:
         st.session_state["chat_history"] = []
 
@@ -87,17 +84,18 @@ def render_rag():
     st.markdown("---")
 
     # ==========================================
-    # BƯỚC 2: KHÔNG GIAN HỎI ĐÁP
+    # BƯỚC 2: KHÔNG GIAN HỎI ĐÁP (Giao diện Chatbot)
     # ==========================================
     st.markdown("### 💬 Bước 2: Tương tác và truy vấn với AI")
 
     if "vectorstore" not in st.session_state:
         st.info("💡 Vui lòng hoàn thành **Bước 1** (Tải tài liệu và bấm phân tích) để kích hoạt Trợ lý AI.")
     else:
+        # Hiển thị lịch sử hội thoại
         for message in st.session_state["chat_history"]:
             with st.chat_message(message["role"]):
                 st.markdown(message["content"])
-                if "model_info" in message:
+                if "model_info" in message and message["model_info"]:
                     st.caption(f"⚡ Sinh bởi: {message['model_info']}")
 
         if question := st.chat_input("Nhập câu hỏi của thầy/cô về tài liệu..."):
@@ -111,23 +109,21 @@ def render_rag():
                     try:
                         context = query_rag(st.session_state["vectorstore"], question)
                         
-                        # --- CẬP NHẬT LỆNH BẮT BUỘC SỬA LỖI TOÁN HỌC ---
                         prompt = f"""Dựa vào ngữ cảnh tài liệu sau đây, hãy trả lời câu hỏi của giáo viên một cách chi tiết.
 
-YÊU CẦU ĐỊNH DẠNG TỐI QUAN TRỌNG:
-1. LUÔN đính kèm chính xác nguồn trích dẫn hoặc số trang (nếu có).
-2. TỰ ĐỘNG SỬA LỖI CÔNG THỨC: Quá trình quét tài liệu có thể làm dính các ký tự (ví dụ: biến fracst thành \\frac{{s}}{{t}}, hay các ký hiệu Khoa học Tự nhiên bị lỗi). BẠN BẮT BUỘC phải nhận diện và viết lại thành công thức LaTeX chuẩn.
-3. Không viết dính liền các đại lượng. Các biến số Toán/Lý/Hóa phải nằm trong dấu $ (ví dụ: $v$, $s$, $t$).
-4. Các công thức độc lập phải nằm trên một dòng riêng với dấu $$ (ví dụ: $$v = \\frac{{s}}{{t}}$$).
-5. CHỈ trả lời bằng ngôn ngữ tự nhiên được định dạng, tuyệt đối không trả về mảng dữ liệu.
+YÊU CẦU ĐỊNH DẠNG:
+- LUÔN đính kèm chính xác nguồn trích dẫn hoặc số trang (nếu có).
+- BẮT BUỘC sử dụng cú pháp LaTeX chuẩn cho các công thức Khoa học Tự nhiên và đặt trong dấu $ (ví dụ: $v = \\frac{{s}}{{t}}$) hoặc $$ (nằm độc lập trên một dòng).
+- Tự động sửa lỗi OCR dính chữ (ví dụ: fracst phải viết lại thành công thức phân số chuẩn).
 
 Ngữ cảnh: {context}
 
 Câu hỏi: {question}"""
                         
+                        # 1. Gọi dịch vụ AI
                         ai_output = run_ai_prompt_safe(prompt)
                         
-                        # Xử lý lột vỏ dữ liệu
+                        # 2. Tách Tuple (nội dung, tên model)
                         if isinstance(ai_output, tuple):
                             raw_answer = ai_output[0]
                             model_info = ai_output[1] if len(ai_output) > 1 else "AI"
@@ -135,22 +131,32 @@ Câu hỏi: {question}"""
                             raw_answer = ai_output
                             model_info = "AI"
 
-                        # Gọi hàm cắt chuỗi phẫu thuật
-                        clean_answer = extract_text_safely(raw_answer)
+                        # 3. Làm sạch mảng JSON của LangChain
+                        clean_response = extract_text_safely(raw_answer)
                         
-                        st.markdown(clean_answer)
+                        # 4. --- GIẢI PHÁP SỬA LỖI LATEX CỦA THẦY ---
+                        # Nhân đôi dấu gạch chéo ngược để Streamlit nhận diện đúng ký tự \ trong LaTeX
+                        clean_response = clean_response.replace('\\', '\\\\')
+                        # Làm sạch các ký tự xuống dòng thô nếu có
+                        clean_response = clean_response.replace('\\\\n', '\n').replace('\\\\t', '\t')
+                        # ------------------------------------------
+
+                        # 5. Hiển thị kết quả
+                        st.markdown(clean_response)
                         st.caption(f"⚡ Sinh bởi: {model_info}")
                         
+                        # Lưu lịch sử
                         st.session_state["chat_history"].append({
                             "role": "assistant", 
-                            "content": clean_answer,
+                            "content": clean_response,
                             "model_info": model_info
                         })
                         
+                        # 6. Sao lưu tự động
                         backup_to_googlesheet({
                             'timestamp': datetime.now().strftime("%Y-%m-%d %H:%M:%S"),
                             'query': question,
-                            'response': clean_answer
+                            'response': clean_response
                         })
                         st.caption("✅ Đã tự động đồng bộ cuộc hội thoại này vào Nhật ký giảng dạy trên Google Sheet!")
                         
